@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --admin-bg: #f4f7fe;
+    --admin-sidebar: #1e1e2d;
+    --admin-card: #ffffff;
+}
+
+body {
+    background-color: var(--admin-bg);
+    color: #1e1e2d;
+    -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+    .card {
+        @apply bg-white rounded-[32px] p-6 shadow-sm border border-gray-100/50;
+    }
+
+    .sidebar-link {
+        @apply flex items-center space-x-4 px-6 py-4 rounded-2xl transition-all duration-200 font-bold;
+    }
+
+    .sidebar-link-active {
+        @apply bg-white/10 text-white shadow-lg;
+    }
+
+    .sidebar-link-inactive {
+        @apply text-gray-400 hover:text-white hover:bg-white/5;
+    }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
