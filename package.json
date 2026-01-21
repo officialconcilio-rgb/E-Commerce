@@ -1,0 +1,25 @@
+{
+  "name": "e-commerce-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Professional E-Commerce Platform for Clothing Brand",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:storefront\" \"npm run dev:admin\"",
+    "dev:api": "npm run dev --workspace=@e-commerce/api-server",
+    "dev:storefront": "npm run dev --workspace=@e-commerce/storefront",
+    "dev:admin": "npm run dev --workspace=@e-commerce/admin-panel",
+    "seed": "node apps/api-server/src/seed.js",
+    "install:all": "npm install"
+  },
+  "keywords": [],
+  "author": "Antigravity AI",
+  "license": "ISC",
+  "devDependencies": {
+    "autoprefixer": "^10.4.23",
+    "concurrently": "^9.2.1"
+  }
+}

@@ -1,0 +1,30 @@
+{
+    "name": "@e-commerce/api-server",
+    "version": "1.0.0",
+    "description": "Backend API for E-Commerce Platform",
+    "main": "src/server.js",
+    "scripts": {
+        "start": "node src/server.js",
+        "dev": "nodemon src/server.js",
+        "test": "NODE_ENV=test jest --testTimeout=30000 --detectOpenHandles --forceExit"
+    },
+    "dependencies": {
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "dotenv": "^16.3.1",
+        "express": "^4.18.2",
+        "express-rate-limit": "^7.1.5",
+        "helmet": "^7.1.0",
+        "jsonwebtoken": "^9.0.2",
+        "mongoose": "^8.0.3",
+        "morgan": "^1.10.0",
+        "multer": "^2.0.2",
+        "pdfkit": "^0.17.2",
+        "razorpay": "^2.9.2"
+    },
+    "devDependencies": {
+        "jest": "^30.2.0",
+        "nodemon": "^3.0.2",
+        "supertest": "^7.2.2"
+    }
+}
