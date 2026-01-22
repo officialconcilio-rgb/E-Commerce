@@ -7,9 +7,13 @@ import { ShoppingBag, User, LogOut, Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Navbar() {
-    const { isAuthenticated, user, logout } = useAuthStore();
+    const { isAuthenticated, user, logout, checkAuth } = useAuthStore();
     const { totalItems, fetchCart } = useCartStore();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
 
     useEffect(() => {
         if (isAuthenticated) {

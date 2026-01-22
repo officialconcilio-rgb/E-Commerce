@@ -38,7 +38,7 @@ export const useAdminStore = create<AdminState>()(
         }),
         {
             name: 'admin-storage',
-            storage: createJSONStorage(() => sessionStorage), // Use sessionStorage instead of localStorage
+            storage: createJSONStorage(() => sessionStorage),
         }
     )
 );

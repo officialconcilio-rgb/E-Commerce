@@ -32,24 +32,68 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        let mounted = true;
+
+        // Safety timeout to prevent infinite loading - redirect to login after 5 seconds
+        const timeoutId = setTimeout(() => {
+            if (mounted && loading) {
+                setLoading(false);
+                const token = sessionStorage.getItem('admin_token');
+                if (!token) {
+                    router.replace('/login');
+                }
+            }
+        }, 5000);
+
         const init = async () => {
+            // If already authenticated, just fetch stats
+            if (isAuthenticated) {
+                try {
+                    const res = await api.get('/admin/analytics');
+                    if (mounted) setStats(res.data.stats);
+                } catch (error: any) {
+                    console.error('Failed to fetch analytics');
+                    // If 401, redirect to login
+                    if (error.response?.status === 401) {
+                        useAdminStore.getState().logout();
+                        router.replace('/login');
+                        return;
+                    }
+                } finally {
+                    if (mounted) setLoading(false);
+                }
+                return;
+            }
+
+            // If not authenticated, try to restore session
             await checkAuth();
-            if (!localStorage.getItem('admin_token')) {
-                router.push('/login');
+            const token = sessionStorage.getItem('admin_token');
+
+            if (!token) {
+                router.replace('/login');
                 return;
             }
 
             try {
                 const res = await api.get('/admin/analytics');
-                setStats(res.data.stats);
-            } catch (error) {
+                if (mounted) setStats(res.data.stats);
+            } catch (error: any) {
                 console.error('Failed to fetch analytics');
+                if (error.response?.status === 401) {
+                    useAdminStore.getState().logout();
+                    router.replace('/login');
+                }
             } finally {
-                setLoading(false);
+                if (mounted) setLoading(false);
             }
         };
         init();
-    }, [router, checkAuth]);
+
+        return () => {
+            mounted = false;
+            clearTimeout(timeoutId);
+        };
+    }, [router, checkAuth, isAuthenticated, loading]);
 
     if (loading) return (
         <div className="h-[80vh] flex items-center justify-center">
@@ -57,14 +101,13 @@ export default function Dashboard() {
         </div>
     );
 
-    const chartData = [
-        { name: 'Mon', sales: 4000 },
-        { name: 'Tue', sales: 3000 },
-        { name: 'Wed', sales: 2000 },
-        { name: 'Thu', sales: 2780 },
-        { name: 'Fri', sales: 1890 },
-        { name: 'Sat', sales: 2390 },
-        { name: 'Sun', sales: 3490 },
+    const chartData = stats?.salesChart || [];
+
+    const categoryColors = [
+        "bg-[#1e1e2d]",
+        "bg-blue-500",
+        "bg-purple-500",
+        "bg-orange-500"
     ];
 
     return (
@@ -74,7 +117,7 @@ export default function Dashboard() {
                 <StatCard
                     title="Total Revenue"
                     value={`₹${stats?.revenue?.toLocaleString() || 0}`}
-                    change="+12.5%"
+                    change="+12.5%" // Ideally this should also be dynamic
                     isUp={true}
                     icon={TrendingUp}
                 />
@@ -94,9 +137,9 @@ export default function Dashboard() {
                 />
                 <StatCard
                     title="Active Users"
-                    value="1,204"
-                    change="-2.4%"
-                    isUp={false}
+                    value={stats?.users?.toLocaleString() || 0}
+                    change="+2.4%"
+                    isUp={true}
                     icon={Users}
                 />
             </div>
@@ -108,7 +151,6 @@ export default function Dashboard() {
                         <h2 className="text-xl font-bold">Sales Overview</h2>
                         <select className="bg-gray-50 border-none rounded-xl px-4 py-2 text-sm font-bold outline-none">
                             <option>Last 7 Days</option>
-                            <option>Last 30 Days</option>
                         </select>
                     </div>
                     <div className="h-[400px] w-full">
@@ -142,10 +184,18 @@ export default function Dashboard() {
                 <div className="card p-8 flex flex-col">
                     <h2 className="text-xl font-bold mb-8">Top Categories</h2>
                     <div className="space-y-6 flex-1">
-                        <CategoryProgress name="Men's Fashion" percentage={65} color="bg-[#1e1e2d]" />
-                        <CategoryProgress name="Women's Fashion" percentage={45} color="bg-blue-500" />
-                        <CategoryProgress name="Accessories" percentage={25} color="bg-purple-500" />
-                        <CategoryProgress name="Footwear" percentage={15} color="bg-orange-500" />
+                        {stats?.topCategories?.length > 0 ? (
+                            stats.topCategories.map((cat: any, index: number) => (
+                                <CategoryProgress
+                                    key={index}
+                                    name={cat.name}
+                                    percentage={cat.percentage}
+                                    color={categoryColors[index % categoryColors.length]}
+                                />
+                            ))
+                        ) : (
+                            <p className="text-gray-500 text-sm">No sales data yet.</p>
+                        )}
                     </div>
                     <div className="mt-8 pt-8 border-t border-gray-100">
                         <button className="w-full py-4 text-sm font-bold text-gray-500 hover:text-[#1e1e2d] transition-colors">

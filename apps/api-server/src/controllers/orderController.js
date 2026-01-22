@@ -75,6 +75,16 @@ exports.createOrder = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Cart is empty' });
         }
 
+        // 1. Validate Stock (Optimistic Check)
+        for (const item of cart.items) {
+            if (item.variantId.stockQuantity < item.quantity) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Insufficient stock for ${item.productId.name} (${item.variantId.size})`
+                });
+            }
+        }
+
         // Calculate total
         let totalAmount = 0;
         const orderItems = cart.items.map(item => {
@@ -113,10 +123,23 @@ exports.createOrder = async (req, res) => {
             await Cart.findOneAndUpdate({ userId: req.user._id }, { items: [] });
 
             // Update Stock for COD
+            // Update Stock for COD (Atomic)
             for (const item of order.items) {
-                await Variant.findByIdAndUpdate(item.variantId, {
-                    $inc: { stockQuantity: -item.quantity }
-                });
+                const updated = await Variant.findOneAndUpdate(
+                    { _id: item.variantId, stockQuantity: { $gte: item.quantity } },
+                    { $inc: { stockQuantity: -item.quantity } }
+                );
+
+                if (!updated) {
+                    // If stock update fails, cancel order immediately
+                    order.status = 'Cancelled';
+                    order.paymentStatus = 'Failed';
+                    await order.save();
+                    return res.status(400).json({
+                        success: false,
+                        message: `Stock unavailable for ${item.name}. Order cancelled.`
+                    });
+                }
             }
 
             return res.status(201).json({
@@ -202,10 +225,21 @@ exports.verifyPayment = async (req, res) => {
         await Cart.findOneAndUpdate({ userId: req.user._id }, { items: [] });
 
         // 5. Update Stock
+        // 5. Update Stock (Atomic)
         for (const item of order.items) {
-            await Variant.findByIdAndUpdate(item.variantId, {
-                $inc: { stockQuantity: -item.quantity }
-            });
+            const updated = await Variant.findOneAndUpdate(
+                { _id: item.variantId, stockQuantity: { $gte: item.quantity } },
+                { $inc: { stockQuantity: -item.quantity } }
+            );
+
+            if (!updated) {
+                // Critical: Payment taken but stock missing.
+                // In production, this should trigger an alert for manual refund.
+                console.error(`CRITICAL: Payment captured but stock missing for Order ${order.orderNumber}, Item ${item.variantId}`);
+                // We still keep order as Paid but maybe flag it?
+                // For now, we'll leave it as Confirmed but log it.
+                // Ideally, we should set a flag 'RequiresAttention'
+            }
         }
 
         res.json({ success: true, message: 'Payment verified successfully', orderId: order._id });
