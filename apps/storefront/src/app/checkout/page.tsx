@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useCartStore } from '@/store/useCartStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import api from '@/utils/api';
 import Navbar from '@/components/Navbar';
 import { useRouter } from 'next/navigation';
@@ -28,6 +29,7 @@ export default function CheckoutPage() {
     const router = useRouter();
     const { items, totalAmount, clearCart } = useCartStore();
     const { user, isAuthenticated, checkAuth } = useAuthStore();
+    const { settings, fetchSettings } = useSettingsStore();
 
     const [loading, setLoading] = useState(false);
     const [selectedAddress, setSelectedAddress] = useState('');
@@ -51,11 +53,16 @@ export default function CheckoutPage() {
         }
     }, [isAuthenticated, user, router]);
 
+    useEffect(() => {
+        fetchSettings();
+    }, []);
+
     const subtotal = items.reduce((acc, item: any) => {
         const price = item.variantId.priceOverride || item.productId.basePrice;
         return acc + (price * item.quantity);
     }, 0);
-    const total = subtotal + (subtotal > 5000 ? 0 : 150);
+    const shippingCost = subtotal > settings.freeShippingThreshold ? 0 : settings.shippingCost;
+    const total = subtotal + shippingCost;
 
     const loadRazorpay = () => {
         return new Promise((resolve) => {
@@ -83,9 +90,11 @@ export default function CheckoutPage() {
                 // Refresh user data to get updated addresses
                 await checkAuth();
 
-                // Select the newly added address
-                const newAddress = res.data.user.addresses[res.data.user.addresses.length - 1];
-                setSelectedAddress(newAddress._id);
+                // Select the newly added address (last one in the array)
+                const addresses = res.data.addresses;
+                if (addresses && addresses.length > 0) {
+                    setSelectedAddress(addresses[addresses.length - 1]._id);
+                }
 
                 // Close modal and reset form
                 setShowAddressModal(false);
@@ -294,7 +303,7 @@ export default function CheckoutPage() {
                             </div>
                             <div className="flex justify-between text-gray-600">
                                 <span>Shipping</span>
-                                <span>{subtotal > 5000 ? 'FREE' : '₹150'}</span>
+                                <span>{shippingCost === 0 ? 'FREE' : `₹${shippingCost}`}</span>
                             </div>
                             <div className="flex justify-between text-2xl font-black pt-4">
                                 <span>Total</span>

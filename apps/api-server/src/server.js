@@ -77,6 +77,7 @@ app.use('/api/orders', paymentLimiter, require('./routes/orderRoutes'));
 
 // Admin routes (admin-specific limits + auth required)
 app.use('/api/admin', adminLimiter, require('./routes/adminRoutes'));
+app.use('/api/settings', generalLimiter, require('./routes/settingsRoutes'));
 
 // Webhook (no rate limit but signature verified in controller)
 app.post('/webhooks/razorpay', express.raw({ type: 'application/json' }), require('./controllers/webhookController').handleRazorpayWebhook);

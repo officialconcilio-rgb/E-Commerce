@@ -51,27 +51,27 @@ export default function ProfilePage() {
                         </div>
 
                         <nav className="space-y-2">
-                            <button className="w-full flex items-center justify-between p-4 bg-black text-white rounded-2xl font-bold">
+                            <Link href="/profile" className="w-full flex items-center justify-between p-4 bg-black text-white rounded-2xl font-bold">
                                 <div className="flex items-center space-x-3">
                                     <Package className="w-5 h-5" />
                                     <span>My Orders</span>
                                 </div>
                                 <ChevronRight className="w-4 h-4" />
-                            </button>
-                            <button className="w-full flex items-center justify-between p-4 bg-white border-2 border-gray-100 rounded-2xl font-bold hover:bg-gray-50 transition-all">
+                            </Link>
+                            <Link href="/profile/addresses" className="w-full flex items-center justify-between p-4 bg-white border-2 border-gray-100 rounded-2xl font-bold hover:bg-gray-50 transition-all">
                                 <div className="flex items-center space-x-3">
                                     <MapPin className="w-5 h-5" />
                                     <span>Addresses</span>
                                 </div>
                                 <ChevronRight className="w-4 h-4" />
-                            </button>
-                            <button className="w-full flex items-center justify-between p-4 bg-white border-2 border-gray-100 rounded-2xl font-bold hover:bg-gray-50 transition-all">
+                            </Link>
+                            <Link href="/profile/settings" className="w-full flex items-center justify-between p-4 bg-white border-2 border-gray-100 rounded-2xl font-bold hover:bg-gray-50 transition-all">
                                 <div className="flex items-center space-x-3">
                                     <UserIcon className="w-5 h-5" />
                                     <span>Account Settings</span>
                                 </div>
                                 <ChevronRight className="w-4 h-4" />
-                            </button>
+                            </Link>
                         </nav>
                     </div>
 

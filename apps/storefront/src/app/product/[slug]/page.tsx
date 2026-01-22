@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { ShoppingBag, Heart, ShieldCheck, Truck, RotateCcw } from 'lucide-react';
 import { useCartStore } from '@/store/useCartStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { useRouter } from 'next/navigation';
 
 export default function ProductDetailPage() {
@@ -15,6 +16,7 @@ export default function ProductDetailPage() {
     const router = useRouter();
     const { addItem } = useCartStore();
     const { isAuthenticated } = useAuthStore();
+    const { settings, fetchSettings } = useSettingsStore();
 
     const [product, setProduct] = useState<any>(null);
     const [variants, setVariants] = useState<any[]>([]);
@@ -24,6 +26,7 @@ export default function ProductDetailPage() {
     const [adding, setAdding] = useState(false);
 
     useEffect(() => {
+        fetchSettings();
         const fetchProduct = async () => {
             try {
                 const res = await api.get(`/products/${slug}`);
@@ -168,11 +171,11 @@ export default function ProductDetailPage() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 border-t border-gray-100">
                             <div className="flex items-center space-x-3 text-sm text-gray-500">
                                 <Truck className="w-5 h-5 text-black" />
-                                <span>Free Shipping</span>
+                                <span>{settings.freeShippingThreshold > 0 ? `Free Shipping over ₹${settings.freeShippingThreshold}` : 'Free Shipping'}</span>
                             </div>
                             <div className="flex items-center space-x-3 text-sm text-gray-500">
                                 <RotateCcw className="w-5 h-5 text-black" />
-                                <span>30-Day Returns</span>
+                                <span>{settings.returnPeriodDays}-Day Returns</span>
                             </div>
                             <div className="flex items-center space-x-3 text-sm text-gray-500">
                                 <ShieldCheck className="w-5 h-5 text-black" />

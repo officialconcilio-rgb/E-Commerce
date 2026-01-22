@@ -79,3 +79,32 @@ exports.updateCartItem = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// @desc    Remove item from cart
+// @route   DELETE /api/cart/remove/:variantId
+// @access  Private
+exports.removeFromCart = async (req, res) => {
+    try {
+        const { variantId } = req.params;
+
+        const cart = await Cart.findOne({ userId: req.user._id });
+        if (!cart) return res.status(404).json({ success: false, message: 'Cart not found' });
+
+        const itemIndex = cart.items.findIndex(item =>
+            item.variantId.toString() === variantId
+        );
+
+        if (itemIndex > -1) {
+            cart.items.splice(itemIndex, 1);
+            await cart.save();
+        }
+
+        // Re-populate for consistent response
+        await cart.populate('items.productId', 'name slug basePrice images');
+        await cart.populate('items.variantId', 'size color sku stockQuantity priceOverride');
+
+        res.json({ success: true, cart });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
