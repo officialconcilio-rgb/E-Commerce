@@ -32,7 +32,7 @@ export default function NewProductPage() {
     const [previews, setPreviews] = useState<string[]>([]);
 
     const [variants, setVariants] = useState([
-        { size: 'S', color: 'Black', stockQuantity: 0, sku: '' }
+        { size: 'S', color: 'Black', stockQuantity: 0 }
     ]);
 
     useEffect(() => {
@@ -54,7 +54,7 @@ export default function NewProductPage() {
     };
 
     const addVariant = () => {
-        setVariants([...variants, { size: 'M', color: 'Black', stockQuantity: 0, sku: '' }]);
+        setVariants([...variants, { size: 'M', color: 'Black', stockQuantity: 0 }]);
     };
 
     const removeVariant = (index: number) => {
@@ -282,7 +282,7 @@ export default function NewProductPage() {
 
                     <div className="space-y-4">
                         {variants.map((variant, index) => (
-                            <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end bg-gray-50 p-4 rounded-xl">
+                            <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-gray-50 p-4 rounded-xl">
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-gray-500">Size</label>
                                     <input
@@ -310,19 +310,10 @@ export default function NewProductPage() {
                                         className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 outline-none focus:border-[#1e1e2d]"
                                     />
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-500">SKU</label>
-                                    <input
-                                        type="text"
-                                        value={variant.sku}
-                                        onChange={(e) => handleVariantChange(index, 'sku', e.target.value)}
-                                        className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 outline-none focus:border-[#1e1e2d]"
-                                    />
-                                </div>
                                 <button
                                     type="button"
                                     onClick={() => removeVariant(index)}
-                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors self-end"
                                 >
                                     <Trash2 className="w-5 h-5" />
                                 </button>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/utils/api';
+import Link from 'next/link';
 import {
     Search,
     Eye,
@@ -14,6 +15,7 @@ import {
 export default function OrdersPage() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [exporting, setExporting] = useState(false);
 
     useEffect(() => {
         const fetchOrders = async () => {
@@ -28,6 +30,30 @@ export default function OrdersPage() {
         };
         fetchOrders();
     }, []);
+
+    const handleExportCSV = async () => {
+        try {
+            setExporting(true);
+            const response = await api.get('/admin/orders/export', {
+                responseType: 'blob'
+            });
+
+            // Create blob link to download
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `orders_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Failed to export CSV:', error);
+            alert('Failed to export orders. Please try again.');
+        } finally {
+            setExporting(false);
+        }
+    };
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -47,9 +73,13 @@ export default function OrdersPage() {
                     <p className="text-gray-500">Track and manage customer orders</p>
                 </div>
                 <div className="flex space-x-4">
-                    <button className="bg-white border-2 border-gray-100 px-6 py-4 rounded-2xl font-bold flex items-center space-x-3 hover:border-[#1e1e2d] transition-all">
-                        <Download className="w-5 h-5" />
-                        <span>Export CSV</span>
+                    <button
+                        onClick={handleExportCSV}
+                        disabled={exporting}
+                        className="bg-white border-2 border-gray-100 px-6 py-4 rounded-2xl font-bold flex items-center space-x-3 hover:border-[#1e1e2d] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Download className={`w-5 h-5 ${exporting ? 'animate-pulse' : ''}`} />
+                        <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
                     </button>
                 </div>
             </div>
@@ -120,9 +150,9 @@ export default function OrdersPage() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-6 text-right">
-                                        <button className="p-2 hover:bg-white rounded-lg shadow-sm border border-gray-100 text-gray-400 hover:text-[#1e1e2d]">
+                                        <Link href={`/orders/${order._id}`} className="p-2 hover:bg-white rounded-lg shadow-sm border border-gray-100 text-gray-400 hover:text-[#1e1e2d] inline-block">
                                             <Eye className="w-4 h-4" />
-                                        </button>
+                                        </Link>
                                     </td>
                                 </tr>
                             ))}

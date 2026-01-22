@@ -4,6 +4,7 @@ const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const Payment = require('../models/Payment');
 const Variant = require('../models/Variant');
+const StoreSettings = require('../models/StoreSettings');
 const { generateInvoice } = require('../utils/invoice');
 const path = require('path');
 const fs = require('fs');
@@ -89,7 +90,10 @@ exports.createOrder = async (req, res) => {
             };
         });
 
-        const finalAmount = totalAmount; // Add shipping/tax logic if needed
+        // Calculate Shipping
+        const settings = await StoreSettings.getSettings();
+        const shippingCost = totalAmount > settings.freeShippingThreshold ? 0 : settings.shippingCost;
+        const finalAmount = totalAmount + shippingCost;
 
         // Create Local Order
         const order = await Order.create({

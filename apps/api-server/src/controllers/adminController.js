@@ -11,18 +11,32 @@ const Razorpay = require('razorpay');
 // @access  Private/Admin
 exports.createProduct = async (req, res) => {
     try {
-        const product = await Product.create(req.body);
+        console.log('[ADMIN] Creating product:', req.body.name);
 
-        if (req.body.variants && Array.isArray(req.body.variants)) {
-            const variants = req.body.variants.map(v => ({
-                ...v,
-                productId: product._id
+        // Create the product first
+        const product = await Product.create(req.body);
+        console.log('[ADMIN] Product created with ID:', product._id);
+
+        // Create variants if provided
+        if (req.body.variants && Array.isArray(req.body.variants) && req.body.variants.length > 0) {
+            const variants = req.body.variants.map((v, index) => ({
+                productId: product._id,
+                size: v.size,
+                color: v.color,
+                stockQuantity: v.stockQuantity || 0,
+                priceOverride: v.priceOverride,
+                // Auto-generate SKU if not provided
+                sku: v.sku || `${product.slug}-${v.size}-${v.color}-${index}`.toLowerCase().replace(/\s+/g, '-')
             }));
-            await Variant.create(variants);
+
+            console.log('[ADMIN] Creating variants:', variants.length);
+            await Variant.insertMany(variants);
+            console.log('[ADMIN] Variants created successfully');
         }
 
         res.status(201).json({ success: true, product });
     } catch (error) {
+        console.error('[ADMIN] Error creating product:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -209,8 +223,81 @@ exports.deleteCoupon = async (req, res) => {
 // @access  Private/Admin
 exports.getCustomers = async (req, res) => {
     try {
-        const customers = await User.find({ role: 'User' }).select('-password').sort({ createdAt: -1 });
+        // Users collection contains customers (Admins are in separate collection)
+        const customers = await User.find({ isActive: true }).select('-password').sort({ createdAt: -1 });
         res.json({ success: true, customers });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Get Single Customer
+// @route   GET /api/admin/customers/:id
+// @access  Private/Admin
+exports.getCustomer = async (req, res) => {
+    try {
+        const customer = await User.findById(req.params.id).select('-password');
+        if (!customer) {
+            return res.status(404).json({ success: false, message: 'Customer not found' });
+        }
+        res.json({ success: true, customer });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Update Customer
+// @route   PUT /api/admin/customers/:id
+// @access  Private/Admin
+exports.updateCustomer = async (req, res) => {
+    try {
+        const { firstName, lastName, phone, isActive } = req.body;
+
+        const customer = await User.findById(req.params.id);
+        if (!customer) {
+            return res.status(404).json({ success: false, message: 'Customer not found' });
+        }
+
+        // Update fields if provided
+        if (firstName !== undefined) customer.firstName = firstName;
+        if (lastName !== undefined) customer.lastName = lastName;
+        if (phone !== undefined) customer.phone = phone;
+        if (isActive !== undefined) customer.isActive = isActive;
+
+        await customer.save();
+
+        res.json({
+            success: true,
+            message: 'Customer updated successfully',
+            customer: {
+                _id: customer._id,
+                firstName: customer.firstName,
+                lastName: customer.lastName,
+                email: customer.email,
+                phone: customer.phone,
+                isActive: customer.isActive
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Delete Customer
+// @route   DELETE /api/admin/customers/:id
+// @access  Private/Admin
+exports.deleteCustomer = async (req, res) => {
+    try {
+        const customer = await User.findById(req.params.id);
+        if (!customer) {
+            return res.status(404).json({ success: false, message: 'Customer not found' });
+        }
+
+        // Soft delete by setting isActive to false
+        customer.isActive = false;
+        await customer.save();
+
+        res.json({ success: true, message: 'Customer deactivated successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -256,6 +343,79 @@ exports.initiateRefund = async (req, res) => {
         await order.save();
 
         res.json({ success: true, refund });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Export Orders as CSV
+// @route   GET /api/admin/orders/export
+// @access  Private/Admin
+exports.exportOrdersCSV = async (req, res) => {
+    try {
+        const orders = await Order.find()
+            .populate('userId', 'firstName lastName email phone')
+            .sort({ createdAt: -1 });
+
+        // CSV Header
+        const headers = [
+            'Order Number',
+            'Date',
+            'Customer Name',
+            'Customer Email',
+            'Phone',
+            'Items',
+            'Subtotal',
+            'Discount',
+            'Final Amount',
+            'Payment Status',
+            'Payment Method',
+            'Order Status',
+            'Shipping Address'
+        ].join(',');
+
+        // CSV Rows
+        const rows = orders.map(order => {
+            const customerName = order.userId
+                ? `${order.userId.firstName || ''} ${order.userId.lastName || ''}`.trim()
+                : 'N/A';
+            const customerEmail = order.userId?.email || 'N/A';
+            const phone = order.userId?.phone || order.shippingAddress?.phone || 'N/A';
+
+            // Format items
+            const items = order.items?.map(item =>
+                `${item.name || 'Product'} x${item.quantity}`
+            ).join('; ') || 'N/A';
+
+            // Format shipping address
+            const addr = order.shippingAddress;
+            const shippingAddress = addr
+                ? `${addr.street || ''} ${addr.city || ''} ${addr.state || ''} ${addr.pincode || ''}`.replace(/,/g, ' ').trim()
+                : 'N/A';
+
+            return [
+                order.orderNumber || order._id,
+                new Date(order.createdAt).toLocaleString('en-IN'),
+                `"${customerName}"`,
+                customerEmail,
+                phone,
+                `"${items}"`,
+                order.subtotal || 0,
+                order.discount || 0,
+                order.finalAmount || 0,
+                order.paymentStatus || 'N/A',
+                order.paymentMethod || 'N/A',
+                order.status || 'N/A',
+                `"${shippingAddress}"`
+            ].join(',');
+        });
+
+        const csv = [headers, ...rows].join('\n');
+
+        // Set headers for CSV download
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=orders_${Date.now()}.csv`);
+        res.send(csv);
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

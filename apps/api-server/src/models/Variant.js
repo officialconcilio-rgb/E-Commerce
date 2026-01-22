@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const variantSchema = new mongoose.Schema({
     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true, index: true },
-    sku: { type: String, required: true, unique: true, index: true },
+    sku: { type: String, index: true }, // Optional - auto-generated if not provided
     size: { type: String, required: true },
     color: { type: String, required: true },
     priceOverride: Number,

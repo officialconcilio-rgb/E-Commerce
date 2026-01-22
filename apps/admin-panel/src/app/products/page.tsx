@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/utils/api';
+import { useRouter } from 'next/navigation';
 import {
     Plus,
     Search,
@@ -15,23 +16,44 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 export default function ProductsPage() {
+    const router = useRouter();
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    const fetchProducts = async () => {
+        try {
+            const res = await api.get('/products');
+            setProducts(res.data.products);
+        } catch (error) {
+            console.error('Failed to fetch products');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const res = await api.get('/products');
-                setProducts(res.data.products);
-            } catch (error) {
-                console.error('Failed to fetch products');
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchProducts();
     }, []);
+
+    const handleDelete = async (productId: string, productName: string) => {
+        if (!confirm(`Are you sure you want to delete "${productName}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        setDeletingId(productId);
+        try {
+            await api.delete(`/admin/products/${productId}`);
+            // Refresh products list
+            await fetchProducts();
+            alert('Product deleted successfully');
+        } catch (error: any) {
+            alert(error.response?.data?.message || 'Failed to delete product');
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     const filteredProducts = products.filter((p: any) =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -118,15 +140,29 @@ export default function ProductsPage() {
                                     </td>
                                     <td className="px-6 py-6 text-right">
                                         <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button className="p-2 hover:bg-white rounded-lg shadow-sm border border-gray-100 text-gray-400 hover:text-[#1e1e2d]">
+                                            <button
+                                                onClick={() => alert('Edit functionality coming soon! Product ID: ' + product._id)}
+                                                className="p-2 hover:bg-white rounded-lg shadow-sm border border-gray-100 text-gray-400 hover:text-[#1e1e2d]"
+                                                title="Edit Product"
+                                            >
                                                 <Edit2 className="w-4 h-4" />
                                             </button>
-                                            <button className="p-2 hover:bg-white rounded-lg shadow-sm border border-gray-100 text-gray-400 hover:text-red-500">
-                                                <Trash2 className="w-4 h-4" />
+                                            <button
+                                                onClick={() => handleDelete(product._id, product.name)}
+                                                disabled={deletingId === product._id}
+                                                className="p-2 hover:bg-white rounded-lg shadow-sm border border-gray-100 text-gray-400 hover:text-red-500 disabled:opacity-50"
+                                                title="Delete Product"
+                                            >
+                                                <Trash2 className={`w-4 h-4 ${deletingId === product._id ? 'animate-spin' : ''}`} />
                                             </button>
-                                            <button className="p-2 hover:bg-white rounded-lg shadow-sm border border-gray-100 text-gray-400 hover:text-blue-500">
+                                            <Link
+                                                href={`${process.env.NEXT_PUBLIC_STOREFRONT_URL || 'http://localhost:3000'}/product/${product.slug}`}
+                                                target="_blank"
+                                                className="p-2 hover:bg-white rounded-lg shadow-sm border border-gray-100 text-gray-400 hover:text-blue-500"
+                                                title="View on Storefront"
+                                            >
                                                 <ExternalLink className="w-4 h-4" />
-                                            </button>
+                                            </Link>
                                         </div>
                                     </td>
                                 </tr>
