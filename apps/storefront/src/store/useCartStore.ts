@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api from '@/utils/api';
+import { useAuthStore } from './useAuthStore';
 
 interface CartItem {
     productId: any;
@@ -33,7 +34,10 @@ export const useCartStore = create<CartState>()(
                         items,
                         totalItems: items.reduce((acc: number, item: any) => acc + item.quantity, 0)
                     });
-                } catch (error) {
+                } catch (error: any) {
+                    if (error.response?.status === 401) {
+                        useAuthStore.getState().logout();
+                    }
                     console.error('Failed to fetch cart');
                 }
             },
@@ -41,7 +45,10 @@ export const useCartStore = create<CartState>()(
                 try {
                     await api.post('/cart/add', item);
                     get().fetchCart();
-                } catch (error) {
+                } catch (error: any) {
+                    if (error.response?.status === 401) {
+                        useAuthStore.getState().logout();
+                    }
                     console.error('Failed to add item');
                 }
             },
@@ -49,7 +56,10 @@ export const useCartStore = create<CartState>()(
                 try {
                     await api.delete(`/cart/remove/${variantId}`);
                     get().fetchCart();
-                } catch (error) {
+                } catch (error: any) {
+                    if (error.response?.status === 401) {
+                        useAuthStore.getState().logout();
+                    }
                     console.error('Failed to remove item');
                 }
             },
@@ -57,7 +67,10 @@ export const useCartStore = create<CartState>()(
                 try {
                     await api.patch('/cart/update', { variantId, quantity });
                     get().fetchCart();
-                } catch (error) {
+                } catch (error: any) {
+                    if (error.response?.status === 401) {
+                        useAuthStore.getState().logout();
+                    }
                     console.error('Failed to update quantity');
                 }
             },

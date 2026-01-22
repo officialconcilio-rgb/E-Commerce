@@ -30,6 +30,13 @@ export default function RootLayout({
     const router = useRouter();
     const { admin, logout, isAuthenticated } = useAdminStore();
 
+    useEffect(() => {
+        const token = sessionStorage.getItem('admin_token');
+        if (!isAuthenticated && !token && !pathname.includes('/login')) {
+            router.replace('/login');
+        }
+    }, [isAuthenticated, pathname, router]);
+
     const isLoginPage = pathname === '/login';
 
     if (isLoginPage) {

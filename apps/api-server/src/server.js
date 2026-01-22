@@ -16,6 +16,10 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
 
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const hpp = require('hpp');
+
 const connectDB = require('./config/db');
 const { corsOptions } = require('./config/cors');
 const { generalLimiter, authLimiter, paymentLimiter, adminLimiter } = require('./middleware/rateLimit');
@@ -45,6 +49,16 @@ app.use(cors(corsOptions));
 // 4. Body parsing with size limits
 app.use(express.json({ limit: '10kb' })); // Limit body size
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// 5. Data Sanitization
+// Data Sanitization against NoSQL query injection
+app.use(mongoSanitize());
+
+// Data Sanitization against XSS
+app.use(xss());
+
+// Prevent Parameter Pollution
+app.use(hpp());
 
 // 5. Request logging (disable in production for performance)
 if (process.env.NODE_ENV !== 'production') {

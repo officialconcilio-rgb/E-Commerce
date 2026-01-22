@@ -158,23 +158,109 @@ exports.updateOrderStatus = async (req, res) => {
 // @access  Private/Admin
 exports.getAnalytics = async (req, res) => {
     try {
+        // 1. Total Revenue (Paid orders)
         const totalSales = await Order.aggregate([
             { $match: { paymentStatus: 'Paid' } },
             { $group: { _id: null, total: { $sum: '$finalAmount' } } }
         ]);
 
+        // 2. Counts
         const orderCount = await Order.countDocuments();
         const productCount = await Product.countDocuments();
+        const userCount = await User.countDocuments({ isActive: true });
+
+        // 3. Sales Chart Data (Last 7 Days)
+        const last7Days = new Date();
+        last7Days.setDate(last7Days.getDate() - 7);
+        last7Days.setHours(0, 0, 0, 0);
+
+        const salesDataRaw = await Order.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: last7Days },
+                    paymentStatus: 'Paid'
+                }
+            },
+            {
+                $group: {
+                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                    sales: { $sum: "$finalAmount" }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        // Fill missing days
+        const salesData = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date();
+            d.setDate(d.getDate() - (6 - i));
+            const dateStr = d.toISOString().split('T')[0];
+            const found = salesDataRaw.find(item => item._id === dateStr);
+
+            // Format day name (Mon, Tue, etc.)
+            const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+
+            salesData.push({
+                name: dayName,
+                date: dateStr,
+                sales: found ? found.sales : 0
+            });
+        }
+
+        // 4. Top Categories (by items sold)
+        const topCategories = await Order.aggregate([
+            { $match: { paymentStatus: 'Paid' } },
+            { $unwind: "$items" },
+            {
+                $lookup: {
+                    from: "products",
+                    localField: "items.productId",
+                    foreignField: "_id",
+                    as: "product"
+                }
+            },
+            { $unwind: "$product" },
+            {
+                $lookup: {
+                    from: "categories",
+                    localField: "product.category",
+                    foreignField: "_id",
+                    as: "category"
+                }
+            },
+            { $unwind: "$category" },
+            {
+                $group: {
+                    _id: "$category.name",
+                    count: { $sum: "$items.quantity" }
+                }
+            },
+            { $sort: { count: -1 } },
+            { $limit: 4 }
+        ]);
+
+        // Calculate percentages for categories
+        const totalCategoryItems = topCategories.reduce((acc, curr) => acc + curr.count, 0);
+        const categoriesWithPercent = topCategories.map(cat => ({
+            name: cat._id,
+            count: cat.count,
+            percentage: totalCategoryItems > 0 ? Math.round((cat.count / totalCategoryItems) * 100) : 0
+        }));
 
         res.json({
             success: true,
             stats: {
                 revenue: totalSales[0]?.total || 0,
                 orders: orderCount,
-                products: productCount
+                products: productCount,
+                users: userCount,
+                salesChart: salesData,
+                topCategories: categoriesWithPercent
             }
         });
     } catch (error) {
+        console.error('Analytics Error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
