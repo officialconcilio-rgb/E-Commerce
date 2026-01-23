@@ -13,9 +13,10 @@ const rateLimit = require('express-rate-limit');
 // ============================================
 // CONFIGURATION (from environment variables)
 // ============================================
+const isDevelopment = process.env.NODE_ENV !== 'production';
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100;
-const RATE_LIMIT_AUTH_MAX = parseInt(process.env.RATE_LIMIT_AUTH_MAX) || 10; // Stricter for auth
+const RATE_LIMIT_AUTH_MAX = parseInt(process.env.RATE_LIMIT_AUTH_MAX) || (isDevelopment ? 1000 : 100); // Higher limit in dev
 const RATE_LIMIT_PAYMENT_MAX = parseInt(process.env.RATE_LIMIT_PAYMENT_MAX) || 20; // Payment endpoints
 
 // ============================================
@@ -51,11 +52,12 @@ const generalLimiter = rateLimit({
 // Prevents brute-force attacks on login/register
 // ============================================
 const authLimiter = rateLimit({
-    windowMs: RATE_LIMIT_WINDOW_MS,
-    max: RATE_LIMIT_AUTH_MAX,
+    windowMs: isDevelopment ? 1 * 60 * 1000 : RATE_LIMIT_WINDOW_MS, // 1 minute in dev, 15 in prod
+    max: isDevelopment ? 500 : RATE_LIMIT_AUTH_MAX, // Very high limit in dev
     standardHeaders: true,
     legacyHeaders: false,
-    skipSuccessfulRequests: false,
+    skipSuccessfulRequests: true, // Don't count successful requests
+    skipFailedRequests: false,
     message: {
         success: false,
         message: 'Too many authentication attempts. Please wait before trying again.',

@@ -317,57 +317,65 @@ exports.getCustomers = async (req, res) => {
     }
 };
 
-// @desc    Get Single Customer
+// @desc    Get Single Customer with Order History
 // @route   GET /api/admin/customers/:id
 // @access  Private/Admin
-exports.getCustomer = async (req, res) => {
+exports.getCustomerWithOrders = async (req, res) => {
     try {
         const customer = await User.findById(req.params.id).select('-password');
         if (!customer) {
             return res.status(404).json({ success: false, message: 'Customer not found' });
         }
-        res.json({ success: true, customer });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
 
-// @desc    Update Customer
-// @route   PUT /api/admin/customers/:id
-// @access  Private/Admin
-exports.updateCustomer = async (req, res) => {
-    try {
-        const { firstName, lastName, phone, isActive } = req.body;
+        // Get customer's orders
+        const orders = await Order.find({ userId: req.params.id })
+            .sort({ createdAt: -1 })
+            .select('orderNumber status paymentStatus finalAmount createdAt items');
 
-        const customer = await User.findById(req.params.id);
-        if (!customer) {
-            return res.status(404).json({ success: false, message: 'Customer not found' });
-        }
-
-        // Update fields if provided
-        if (firstName !== undefined) customer.firstName = firstName;
-        if (lastName !== undefined) customer.lastName = lastName;
-        if (phone !== undefined) customer.phone = phone;
-        if (isActive !== undefined) customer.isActive = isActive;
-
-        await customer.save();
+        // Calculate customer statistics
+        const totalOrders = orders.length;
+        const totalSpent = orders
+            .filter(o => o.paymentStatus === 'Paid')
+            .reduce((sum, o) => sum + (o.finalAmount || 0), 0);
+        const lastOrderDate = orders.length > 0 ? orders[0].createdAt : null;
 
         res.json({
             success: true,
-            message: 'Customer updated successfully',
             customer: {
                 _id: customer._id,
                 firstName: customer.firstName,
                 lastName: customer.lastName,
                 email: customer.email,
                 phone: customer.phone,
-                isActive: customer.isActive
-            }
+                isEmailVerified: customer.isEmailVerified,
+                isPhoneVerified: customer.isPhoneVerified,
+                createdAt: customer.createdAt,
+                lastLogin: customer.lastLogin,
+                addresses: customer.addresses
+            },
+            stats: {
+                totalOrders,
+                totalSpent,
+                lastOrderDate
+            },
+            orders: orders.map(order => ({
+                _id: order._id,
+                orderNumber: order.orderNumber,
+                status: order.status,
+                paymentStatus: order.paymentStatus,
+                amount: order.finalAmount,
+                date: order.createdAt,
+                itemCount: order.items?.length || 0
+            }))
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// Note: updateCustomer has been removed - customers cannot be edited by admin
+// Customers can only update their own profile through their account settings
+
 
 // @desc    Delete Customer
 // @route   DELETE /api/admin/customers/:id
