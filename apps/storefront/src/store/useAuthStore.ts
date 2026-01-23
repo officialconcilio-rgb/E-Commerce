@@ -27,6 +27,13 @@ export const useAuthStore = create<AuthState>()(
                 set({ token: null, user: null, isAuthenticated: false });
             },
             checkAuth: async () => {
+                // Skip if already authenticated (reduces API calls)
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    set({ user: null, token: null, isAuthenticated: false });
+                    return;
+                }
+
                 try {
                     const res = await api.get('/auth/me');
                     set({ user: res.data.user, isAuthenticated: true });

@@ -25,8 +25,7 @@ router.get('/coupons', require('../controllers/adminController').getCoupons);
 router.delete('/coupons/:id', require('../controllers/adminController').deleteCoupon);
 
 router.get('/customers', require('../controllers/adminController').getCustomers);
-router.get('/customers/:id', require('../controllers/adminController').getCustomer);
-router.put('/customers/:id', require('../controllers/adminController').updateCustomer);
+router.get('/customers/:id', require('../controllers/adminController').getCustomerWithOrders);
 router.delete('/customers/:id', require('../controllers/adminController').deleteCustomer);
 
 router.get('/analytics', getAnalytics);
