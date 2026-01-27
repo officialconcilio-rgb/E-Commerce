@@ -7,6 +7,7 @@ router.use(protect);
 router.use(authorize('SuperAdmin', 'Manager'));
 
 router.post('/products', createProduct);
+router.get('/products/:id', require('../controllers/adminController').getProductById);
 router.put('/products/:id', require('../controllers/adminController').updateProduct);
 router.delete('/products/:id', require('../controllers/adminController').deleteProduct);
 
@@ -29,5 +30,12 @@ router.get('/customers/:id', require('../controllers/adminController').getCustom
 router.delete('/customers/:id', require('../controllers/adminController').deleteCustomer);
 
 router.get('/analytics', getAnalytics);
+
+// Notifications
+const notificationCtrl = require('../controllers/notificationController');
+router.get('/notifications', notificationCtrl.getNotifications);
+router.patch('/notifications/read-all', notificationCtrl.markAllAsRead);
+router.patch('/notifications/:id/read', notificationCtrl.markAsRead);
+router.delete('/notifications/:id', notificationCtrl.deleteNotification);
 
 module.exports = router;

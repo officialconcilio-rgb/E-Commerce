@@ -1,5 +1,5 @@
 /**
- * Script to fix product images with broken URLs
+ * Script to fix product images with broken URLs using high-quality Vagmi theme images
  * Run with: node src/fix-images.js
  */
 
@@ -7,53 +7,50 @@ require('dotenv').config({ path: require('path').join(__dirname, '../../../.env'
 const mongoose = require('mongoose');
 const Product = require('./models/Product');
 
+const VagmiImages = [
+    'https://images.unsplash.com/photo-1561336313-0bd5e0b27ec8?w=800&q=90&fit=crop',
+    'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&q=90&fit=crop',
+    'https://images.unsplash.com/photo-1616046229478-9901c5536a45?w=800&q=90&fit=crop',
+    'https://images.unsplash.com/photo-1590073844006-3a78a7820ecf?w=800&q=90&fit=crop',
+    'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=800&q=90&fit=crop',
+    'https://images.unsplash.com/photo-1512418490979-92798cccbe3a?w=800&q=90&fit=crop',
+];
+
 const fixImages = async () => {
     try {
+        console.log('Connecting to MongoDB...');
         await mongoose.connect(process.env.MONGODB_URI);
-        console.log('Connected to DB...');
+        console.log('Connected!');
 
-        // Find products with broken image URLs
-        const products = await Product.find({
-            $or: [
-                { 'images': { $regex: 'example.com' } },
-                { 'images': { $regex: '1769106668268' } } // The missing image
-            ]
-        });
-
-        console.log(`Found ${products.length} products with broken images`);
-
-        // Placeholder images from Unsplash (fashion/clothing themed)
-        const placeholderImages = [
-            'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=500',
-            'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=500',
-            'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=500',
-            'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=500',
-            'https://images.unsplash.com/photo-1516762689617-e1cffcef479d?w=500',
-        ];
+        // Find ALL products to ensure consistency
+        const products = await Product.find({});
+        console.log(`Processing ${products.length} products...`);
 
         for (let i = 0; i < products.length; i++) {
             const product = products[i];
-            const newImage = placeholderImages[i % placeholderImages.length];
 
-            await Product.findByIdAndUpdate(product._id, {
-                images: [newImage]
-            });
+            // If the image contains a known broken pattern or is just placeholderish
+            const isBroken = product.images.some(img =>
+                img.includes('1604423565793') ||
+                img.includes('1582738411706') ||
+                img.includes('1567591370504') ||
+                img.includes('example.com') ||
+                img.includes('1769106668268')
+            );
 
-            console.log(`Fixed: ${product.name} -> ${newImage}`);
+            if (isBroken || product.images.length === 0) {
+                const newImage = VagmiImages[i % VagmiImages.length];
+                await Product.findByIdAndUpdate(product._id, {
+                    images: [newImage]
+                });
+                console.log(`Fixed product: ${product.name}`);
+            }
         }
 
-        // Also fix any products with the specific missing image
-        const result = await Product.updateMany(
-            { 'images': { $regex: '1769106668268' } },
-            { $set: { images: [placeholderImages[0]] } }
-        );
-
-        console.log(`Updated ${result.modifiedCount} more products with missing local images`);
-
-        console.log('Done! All broken images have been fixed.');
+        console.log('Success! Database images are now stable and beautiful.');
         process.exit(0);
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Database connection or fix error:', error);
         process.exit(1);
     }
 };

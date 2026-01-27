@@ -37,9 +37,13 @@ export const useAuthStore = create<AuthState>()(
                 try {
                     const res = await api.get('/auth/me');
                     set({ user: res.data.user, isAuthenticated: true });
-                } catch (error) {
-                    localStorage.removeItem('token');
-                    set({ user: null, token: null, isAuthenticated: false });
+                } catch (error: any) {
+                    // Only logout if token is invalid (401)
+                    if (error.response?.status === 401) {
+                        localStorage.removeItem('token');
+                        set({ user: null, token: null, isAuthenticated: false });
+                    }
+                    // For other errors (networking, 500), keep the state as is (optimistic)
                 }
             },
             setUser: (user) => {

@@ -19,9 +19,23 @@ exports.getProducts = async (req, res) => {
             query.$text = { $search: search };
         }
 
+        const { minPrice, maxPrice, minDiscount } = req.query;
+        if (minPrice || maxPrice) {
+            query.price = {};
+            if (minPrice) query.price.$gte = Number(minPrice);
+            if (maxPrice) query.price.$lte = Number(maxPrice);
+        }
+
+        if (minDiscount) {
+            query.discount = { $gte: Number(minDiscount) };
+        }
+
         let sortQuery = { createdAt: -1 };
-        if (sort === 'price_asc') sortQuery = { basePrice: 1 };
-        if (sort === 'price_desc') sortQuery = { basePrice: -1 };
+        if (sort === 'price_asc') sortQuery = { price: 1 };
+        if (sort === 'price_desc') sortQuery = { price: -1 };
+
+        console.log('[API] Incoming products query params:', req.query);
+        console.log('[API] Final MongoDB query:', JSON.stringify(query));
 
         const products = await Product.find(query)
             .sort(sortQuery)
@@ -30,6 +44,7 @@ exports.getProducts = async (req, res) => {
             .populate('category', 'name slug');
 
         const count = await Product.countDocuments(query);
+        console.log('[API] Result count:', count);
 
         res.json({
             success: true,

@@ -36,7 +36,8 @@ export const useCartStore = create<CartState>()(
                     });
                 } catch (error: any) {
                     if (error.response?.status === 401) {
-                        useAuthStore.getState().logout();
+                        // useAuthStore.getState().logout();
+                        console.warn('Authentication failed during fetchCart');
                     }
                     console.error('Failed to fetch cart');
                 }
@@ -47,7 +48,8 @@ export const useCartStore = create<CartState>()(
                     get().fetchCart();
                 } catch (error: any) {
                     if (error.response?.status === 401) {
-                        useAuthStore.getState().logout();
+                        // useAuthStore.getState().logout();
+                        console.warn('Authentication failed during addItem');
                     }
                     console.error('Failed to add item');
                 }
@@ -58,7 +60,8 @@ export const useCartStore = create<CartState>()(
                     get().fetchCart();
                 } catch (error: any) {
                     if (error.response?.status === 401) {
-                        useAuthStore.getState().logout();
+                        // useAuthStore.getState().logout();
+                        console.warn('Authentication failed during removeItem');
                     }
                     console.error('Failed to remove item');
                 }
@@ -69,7 +72,8 @@ export const useCartStore = create<CartState>()(
                     get().fetchCart();
                 } catch (error: any) {
                     if (error.response?.status === 401) {
-                        useAuthStore.getState().logout();
+                        // useAuthStore.getState().logout();
+                        console.warn('Authentication failed: Invalid credentials');
                     }
                     console.error('Failed to update quantity');
                 }

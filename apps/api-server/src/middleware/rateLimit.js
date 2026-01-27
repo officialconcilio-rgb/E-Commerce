@@ -23,8 +23,8 @@ const RATE_LIMIT_PAYMENT_MAX = parseInt(process.env.RATE_LIMIT_PAYMENT_MAX) || 2
 // GENERAL API RATE LIMITER
 // ============================================
 const generalLimiter = rateLimit({
-    windowMs: RATE_LIMIT_WINDOW_MS,
-    max: RATE_LIMIT_MAX_REQUESTS,
+    windowMs: isDevelopment ? 1 * 60 * 1000 : RATE_LIMIT_WINDOW_MS, // 1 minute in dev
+    max: isDevelopment ? 1000 : RATE_LIMIT_MAX_REQUESTS, // 1000 requests per minute in dev
     standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
     legacyHeaders: false, // Disable `X-RateLimit-*` headers
     message: {
@@ -78,8 +78,8 @@ const authLimiter = rateLimit({
 // Moderate limits for payment endpoints
 // ============================================
 const paymentLimiter = rateLimit({
-    windowMs: RATE_LIMIT_WINDOW_MS,
-    max: RATE_LIMIT_PAYMENT_MAX,
+    windowMs: isDevelopment ? 1 * 60 * 1000 : RATE_LIMIT_WINDOW_MS,
+    max: isDevelopment ? 500 : RATE_LIMIT_PAYMENT_MAX,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -104,8 +104,8 @@ const paymentLimiter = rateLimit({
 // Protect admin endpoints from abuse
 // ============================================
 const adminLimiter = rateLimit({
-    windowMs: RATE_LIMIT_WINDOW_MS,
-    max: 50, // Lower limit for admin operations
+    windowMs: isDevelopment ? 1 * 60 * 1000 : RATE_LIMIT_WINDOW_MS,
+    max: isDevelopment ? 500 : 50, // 500 in dev, 50 in prod
     standardHeaders: true,
     legacyHeaders: false,
     message: {

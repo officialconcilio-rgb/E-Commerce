@@ -43,6 +43,15 @@ exports.handleRazorpayWebhook = async (req, res) => {
                         $inc: { stockQuantity: -item.quantity }
                     });
                 }
+
+                // Notify Admin
+                const { createAdminNotification } = require('../utils/notificationService');
+                await createAdminNotification({
+                    title: 'New Prepaid Order (Webhook)',
+                    message: `Order ${order.orderNumber} confirmed for ₹${order.finalAmount}`,
+                    type: 'Order',
+                    link: `/orders/${order._id}`
+                });
             }
         }
     }

@@ -17,18 +17,18 @@ const userSchema = new mongoose.Schema({
     lastName: { type: String, required: true },
     email: { type: String, required: true, unique: true, index: true },
     password: { type: String, select: false }, // Not required initially - set after email verification
-    phone: { type: String, required: true, unique: true, sparse: true },
+    phone: { type: String, sparse: true }, // Optional - no longer used for OTP
 
     // Verification status
     isEmailVerified: { type: Boolean, default: false },
     isPhoneVerified: { type: Boolean, default: false },
     isRegistrationComplete: { type: Boolean, default: false },
 
-    // Phone OTP verification
-    phoneOTP: { type: String, select: false },
-    phoneOTPExpiry: { type: Date, select: false },
+    // Email OTP verification (Passowrdless Login)
+    emailOTP: { type: String, select: false },
+    emailOTPExpiry: { type: Date, select: false },
 
-    // Email verification token
+    // Email verification token (for registration flow)
     emailVerificationToken: { type: String, select: false },
     emailVerificationExpiry: { type: Date, select: false },
 

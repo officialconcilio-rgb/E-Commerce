@@ -17,7 +17,7 @@ export default function CategoriesPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<any>(null);
-    const [formData, setFormData] = useState({ name: '', description: '', slug: '' });
+    const [formData, setFormData] = useState({ name: '', description: '', slug: '', isActive: true });
     const [submitting, setSubmitting] = useState(false);
 
     const fetchCategories = async () => {
@@ -46,7 +46,7 @@ export default function CategoriesPage() {
             }
             setIsModalOpen(false);
             setEditingCategory(null);
-            setFormData({ name: '', description: '', slug: '' });
+            setFormData({ name: '', description: '', slug: '', isActive: true });
             fetchCategories();
         } catch (error) {
             alert('Failed to save category');
@@ -70,7 +70,8 @@ export default function CategoriesPage() {
         setFormData({
             name: category.name,
             description: category.description,
-            slug: category.slug
+            slug: category.slug,
+            isActive: category.isActive !== false
         });
         setIsModalOpen(true);
     };
@@ -84,12 +85,12 @@ export default function CategoriesPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                     <h1 className="text-3xl font-black text-[#1e1e2d] tracking-tight mb-2">CATEGORIES.</h1>
-                    <p className="text-gray-500">Manage product categories</p>
+                    <p className="text-gray-500">Manage product categories. The first 5 active categories will appear in the storefront header.</p>
                 </div>
                 <button
                     onClick={() => {
                         setEditingCategory(null);
-                        setFormData({ name: '', description: '', slug: '' });
+                        setFormData({ name: '', description: '', slug: '', isActive: true });
                         setIsModalOpen(true);
                     }}
                     className="bg-[#1e1e2d] text-white px-8 py-4 rounded-2xl font-bold flex items-center space-x-3 shadow-xl shadow-[#1e1e2d]/20 hover:scale-[1.02] transition-all"
@@ -119,7 +120,7 @@ export default function CategoriesPage() {
                             <tr className="text-xs text-gray-400 uppercase border-b border-gray-100">
                                 <th className="px-6 pb-4">Name</th>
                                 <th className="px-6 pb-4">Slug</th>
-                                <th className="px-6 pb-4">Description</th>
+                                <th className="px-6 pb-4">Status</th>
                                 <th className="px-6 pb-4 text-right">Actions</th>
                             </tr>
                         </thead>
@@ -134,7 +135,12 @@ export default function CategoriesPage() {
                                 <tr key={category._id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-6 py-6 font-bold text-[#1e1e2d]">{category.name}</td>
                                     <td className="px-6 py-6 text-gray-500 font-mono text-sm">{category.slug}</td>
-                                    <td className="px-6 py-6 text-gray-500">{category.description}</td>
+                                    <td className="px-6 py-6 text-gray-500 max-w-xs truncate">{category.description}</td>
+                                    <td className="px-6 py-6">
+                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${category.isActive !== false ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                            {category.isActive !== false ? 'ACTIVE' : 'INACTIVE'}
+                                        </span>
+                                    </td>
                                     <td className="px-6 py-6 text-right">
                                         <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
@@ -183,14 +189,27 @@ export default function CategoriesPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Slug</label>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Slug (URL identifier)</label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.slug}
-                                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                                    onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
                                     className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl outline-none focus:ring-2 ring-[#1e1e2d]/10"
+                                    placeholder="e.g. divine-idols"
                                 />
+                            </div>
+                            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl">
+                                <input
+                                    type="checkbox"
+                                    id="isActive"
+                                    checked={formData.isActive}
+                                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                                    className="w-5 h-5 accent-[#1e1e2d]"
+                                />
+                                <label htmlFor="isActive" className="text-sm font-bold text-gray-700 cursor-pointer">
+                                    Display in header (maximum 5 active categories will show)
+                                </label>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Description</label>

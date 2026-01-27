@@ -128,7 +128,7 @@ export default function ProductsPage() {
                                             {product.category?.name}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-6 font-bold">₹{product.basePrice}</td>
+                                    <td className="px-6 py-6 font-bold">₹{product.price}</td>
                                     <td className="px-6 py-6">
                                         <span className="font-medium">124 units</span>
                                     </td>
@@ -140,13 +140,13 @@ export default function ProductsPage() {
                                     </td>
                                     <td className="px-6 py-6 text-right">
                                         <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button
-                                                onClick={() => alert('Edit functionality coming soon! Product ID: ' + product._id)}
+                                            <Link
+                                                href={`/products/edit/${product._id}`}
                                                 className="p-2 hover:bg-white rounded-lg shadow-sm border border-gray-100 text-gray-400 hover:text-[#1e1e2d]"
                                                 title="Edit Product"
                                             >
                                                 <Edit2 className="w-4 h-4" />
-                                            </button>
+                                            </Link>
                                             <button
                                                 onClick={() => handleDelete(product._id, product.name)}
                                                 disabled={deletingId === product._id}

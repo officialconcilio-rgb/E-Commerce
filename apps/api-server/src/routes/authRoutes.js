@@ -1,16 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const {
-    // Multi-step registration
-    initiateRegistration,
-    verifyPhoneOTP,
-    addEmailAndVerify,
-    verifyEmail,
-    setPassword,
-    resendPhoneOTP,
-    resendVerificationEmail,
-    // Legacy
-    register,
+    // Email OTP Login
+    sendEmailLoginOTP,
+    verifyEmailLoginOTP,
+    // Legacy/Core
     login,
     getMe,
     addAddress,
@@ -18,23 +12,22 @@ const {
     updateAddress,
     deleteAddress,
     setDefaultAddress,
-    updateProfile
+    updateProfile,
+    googleSimulated
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 
-// Multi-step registration routes
-router.post('/register/phone', initiateRegistration);
-router.post('/register/verify-phone', verifyPhoneOTP);
-router.post('/register/email', addEmailAndVerify);
-router.get('/register/verify-email/:token', verifyEmail);
-router.post('/register/set-password', setPassword);
-router.post('/register/resend-otp', resendPhoneOTP);
-router.post('/register/resend-email', resendVerificationEmail);
+// Simulated Google Login
+router.post('/google-simulated', googleSimulated);
 
-// Legacy registration (kept for backward compatibility)
-router.post('/register', register);
+// Email OTP Login/Signup
+router.post('/login/email', sendEmailLoginOTP);
+router.post('/login/verify', verifyEmailLoginOTP);
 
-// Login
+// Reset password (initiate)
+// router.post('/forgot-password', forgotPassword); // To be implemented if needed
+
+// Login (Legacy/Admin)
 router.post('/login', login);
 
 // Protected routes

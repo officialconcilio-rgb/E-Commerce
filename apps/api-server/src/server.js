@@ -9,12 +9,12 @@
  * - Role-based authorization
  */
 
-require('dotenv').config({ path: '../../.env' });
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const path = require('path');
 
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
@@ -47,8 +47,8 @@ app.use(helmet({
 app.use(cors(corsOptions));
 
 // 4. Body parsing with size limits
-app.use(express.json({ limit: '10kb' })); // Limit body size
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // 5. Data Sanitization
 // Data Sanitization against NoSQL query injection
@@ -88,6 +88,7 @@ app.use('/api/products', generalLimiter, require('./routes/productRoutes'));
 // Protected routes (require auth)
 app.use('/api/cart', generalLimiter, require('./routes/cartRoutes'));
 app.use('/api/orders', paymentLimiter, require('./routes/orderRoutes'));
+app.use('/api/wishlist', generalLimiter, require('./routes/wishlistRoutes'));
 
 // Admin routes (admin-specific limits + auth required)
 app.use('/api/admin', adminLimiter, require('./routes/adminRoutes'));

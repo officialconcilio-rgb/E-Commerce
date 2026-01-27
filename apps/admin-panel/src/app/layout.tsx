@@ -13,10 +13,12 @@ import {
     LogOut,
     Bell,
     Search,
-    ShieldCheck
+    ShieldCheck,
+    Loader2
 } from 'lucide-react';
+import NotificationCenter from '@/components/NotificationCenter';
 import { useAdminStore } from '@/store/useAdminStore';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 const outfit = Outfit({ subsets: ["latin"], variable: '--font-outfit' });
@@ -29,16 +31,35 @@ export default function RootLayout({
     const pathname = usePathname();
     const router = useRouter();
     const { admin, logout, isAuthenticated } = useAdminStore();
-
-    useEffect(() => {
-        const token = sessionStorage.getItem('admin_token');
-        if (!isAuthenticated && !token && !pathname.includes('/login')) {
-            router.replace('/login');
-        }
-    }, [isAuthenticated, pathname, router]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isAuthorized, setIsAuthorized] = useState(false);
 
     const isLoginPage = pathname === '/login';
 
+    useEffect(() => {
+        // Skip auth check for login page
+        if (isLoginPage) {
+            setIsLoading(false);
+            return;
+        }
+
+        // Check authentication
+        const token = sessionStorage.getItem('admin_token');
+
+        if (!token && !isAuthenticated) {
+            // No token and not authenticated - redirect to login
+            router.replace('/login');
+            return;
+        }
+
+        if (token || isAuthenticated) {
+            // User has token or is authenticated - allow access
+            setIsAuthorized(true);
+            setIsLoading(false);
+        }
+    }, [isAuthenticated, isLoginPage, router]);
+
+    // Login page - render without sidebar
     if (isLoginPage) {
         return (
             <html lang="en" className={`${inter.variable} ${outfit.variable}`}>
@@ -47,8 +68,43 @@ export default function RootLayout({
         );
     }
 
+    // Show loading state while checking authentication
+    if (isLoading) {
+        return (
+            <html lang="en" className={`${inter.variable} ${outfit.variable}`}>
+                <body className="font-inter flex h-screen items-center justify-center bg-[#1e1e2d]">
+                    <div className="text-center">
+                        <Loader2 className="w-12 h-12 animate-spin text-white mx-auto mb-4" />
+                        <p className="text-white/60 text-sm">Loading...</p>
+                    </div>
+                </body>
+            </html>
+        );
+    }
+
+    // Not authorized - don't render anything (redirect is in progress)
+    if (!isAuthorized) {
+        return (
+            <html lang="en" className={`${inter.variable} ${outfit.variable}`}>
+                <body className="font-inter flex h-screen items-center justify-center bg-[#1e1e2d]">
+                    <div className="text-center">
+                        <Loader2 className="w-12 h-12 animate-spin text-white mx-auto mb-4" />
+                        <p className="text-white/60 text-sm">Redirecting to login...</p>
+                    </div>
+                </body>
+            </html>
+        );
+    }
+
     const navItems = [
         { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+        {
+            name: 'Categories', href: '/categories', icon: ({ className }: { className?: string }) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+            )
+        },
         { name: 'Products', href: '/products', icon: Package },
         { name: 'Orders', href: '/orders', icon: ShoppingBag },
         { name: 'Customers', href: '/customers', icon: Users },
@@ -64,7 +120,7 @@ export default function RootLayout({
                         <div className="bg-white/10 p-3 rounded-2xl">
                             <ShieldCheck className="w-8 h-8" />
                         </div>
-                        <h1 className="text-2xl font-black tracking-tighter">ADMIN.</h1>
+                        <h1 className="text-3xl font-script text-white" style={{ fontFamily: "'Great Vibes', cursive" }}>Vagmi</h1>
                     </div>
 
                     <nav className="flex-1 space-y-2">
@@ -108,18 +164,15 @@ export default function RootLayout({
                         </div>
 
                         <div className="flex items-center space-x-6">
-                            <button className="relative p-3 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors">
-                                <Bell className="w-6 h-6 text-gray-500" />
-                                <span className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-                            </button>
+                            <NotificationCenter />
 
                             <div className="flex items-center space-x-4 pl-6 border-l border-gray-100">
                                 <div className="text-right">
-                                    <p className="text-sm font-black text-[#1e1e2d]">{admin?.username || 'Admin User'}</p>
+                                    <p className="text-sm font-black text-[#1e1e2d]">{admin?.username || admin?.firstName || 'Admin User'}</p>
                                     <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">{admin?.role || 'Manager'}</p>
                                 </div>
                                 <div className="w-12 h-12 bg-[#1e1e2d] rounded-2xl flex items-center justify-center text-white font-black">
-                                    {admin?.username?.[0].toUpperCase() || 'A'}
+                                    {(admin?.username || admin?.firstName)?.[0]?.toUpperCase() || 'A'}
                                 </div>
                             </div>
                         </div>
