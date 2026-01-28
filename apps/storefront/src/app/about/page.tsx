@@ -69,10 +69,11 @@ export default function AboutPage() {
                         <div className="relative">
                             <div className="aspect-[4/5] relative rounded-2xl overflow-hidden shadow-xl">
                                 <Image
-                                    src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1920&q=90&fit=crop"
+                                    src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=1920&q=90&fit=crop"
                                     alt="Beautiful Gifts"
                                     fill
                                     className="object-cover"
+                                    sizes="(max-width: 1024px) 100vw, 50vw"
                                 />
                             </div>
                             {/* Floating card */}

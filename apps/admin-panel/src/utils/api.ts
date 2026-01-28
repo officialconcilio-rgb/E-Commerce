@@ -18,4 +18,19 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            sessionStorage.removeItem('admin_token');
+            sessionStorage.removeItem('admin_user');
+            sessionStorage.removeItem('admin-storage'); // Clear Zustand persisted state
+            if (typeof window !== 'undefined') {
+                window.location.href = '/login';
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 export default api;

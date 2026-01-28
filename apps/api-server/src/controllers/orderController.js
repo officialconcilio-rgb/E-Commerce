@@ -127,11 +127,13 @@ exports.createOrder = async (req, res) => {
             link: `/orders/${order._id}`
         });
 
-        return res.status(201).json({
-            success: true,
-            order,
-            message: 'Order placed successfully (COD)'
-        });
+        if (paymentMethod === 'COD') {
+            return res.status(201).json({
+                success: true,
+                order,
+                message: 'Order placed successfully (COD)'
+            });
+        }
 
         // Create Razorpay Order for Prepaid
         const options = {

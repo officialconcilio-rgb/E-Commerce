@@ -27,6 +27,7 @@ export const useCartStore = create<CartState>()(
             totalItems: 0,
             totalAmount: 0,
             fetchCart: async () => {
+                if (!useAuthStore.getState().isAuthenticated) return;
                 try {
                     const res = await api.get('/cart');
                     const items = res.data.cart.items;

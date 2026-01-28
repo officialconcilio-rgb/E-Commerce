@@ -9,6 +9,55 @@ const generateOTP = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+// @desc    Register new user
+// @route   POST /api/auth/register
+// @access  Public
+exports.register = async (req, res) => {
+    try {
+        const { email, firstName, lastName, phone } = req.body;
+
+        if (!email || !firstName || !lastName || !phone) {
+            return res.status(400).json({ success: false, message: 'Please provide all required fields' });
+        }
+
+        // Check if user already exists
+        let user = await User.findOne({ email });
+        if (user) {
+            return res.status(400).json({
+                success: false,
+                message: 'User already exists. Please login instead.',
+                userExists: true
+            });
+        }
+
+        // Generate OTP
+        const otp = generateOTP();
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        // Create new user (unverified)
+        user = await User.create({
+            email,
+            firstName,
+            lastName,
+            phone,
+            emailOTP: otp,
+            emailOTPExpiry: otpExpiry,
+            isRegistrationComplete: false
+        });
+
+        // Send OTP
+        await sendOTPEmail(email, otp);
+
+        res.status(200).json({
+            success: true,
+            message: 'Registration initiated. OTP sent to your email.'
+        });
+    } catch (error) {
+        console.error('[AUTH] Register error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // @desc    Simulated Google Login (for demo/development)
 // @route   POST /api/auth/google-simulated
 // @access  Public
@@ -84,7 +133,8 @@ exports.sendEmailLoginOTP = async (req, res) => {
             if (!firstName || !lastName || !phone) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Please provide your name and phone number to create an account'
+                    isNewUser: true,
+                    message: 'Please provide your details to create an account'
                 });
             }
 
@@ -98,11 +148,7 @@ exports.sendEmailLoginOTP = async (req, res) => {
                 emailOTPExpiry: otpExpiry
             });
         } else {
-            // Update existing user info if provided
-            if (firstName) user.firstName = firstName;
-            if (lastName) user.lastName = lastName;
-            if (phone) user.phone = phone;
-
+            // Update OTP for existing user
             user.emailOTP = otp;
             user.emailOTPExpiry = otpExpiry;
             await user.save();
@@ -113,10 +159,34 @@ exports.sendEmailLoginOTP = async (req, res) => {
 
         res.status(200).json({
             success: true,
+            isNewUser: !user.isRegistrationComplete,
             message: 'OTP sent to your email'
         });
     } catch (error) {
         console.error('[AUTH] Email OTP error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Resend OTP
+// @route   POST /api/auth/resend-otp
+// @access  Public
+exports.resendOTP = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
+
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const otp = generateOTP();
+        user.emailOTP = otp;
+        user.emailOTPExpiry = new Date(Date.now() + 10 * 60 * 1000);
+        await user.save();
+
+        await sendOTPEmail(email, otp);
+        res.status(200).json({ success: true, message: 'New OTP sent' });
+    } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };

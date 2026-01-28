@@ -10,6 +10,10 @@
  */
 
 const path = require('path');
+const dns = require('dns');
+// Set custom DNS servers to bypass local network DNS restrictions for MongoDB SRV records
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
 require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
 const express = require('express');
 const cors = require('cors');

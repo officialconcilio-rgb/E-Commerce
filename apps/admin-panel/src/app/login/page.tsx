@@ -4,16 +4,17 @@ import { useState } from 'react';
 import { useAdminStore } from '@/store/useAdminStore';
 import api from '@/utils/api';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLoginPage() {
     const router = useRouter();
     const login = useAdminStore((state) => state.login);
 
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState('admin@vagmi.com');
+    const [password, setPassword] = useState('adminpassword123');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -67,7 +68,7 @@ export default function AdminLoginPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#1e1e2d] focus:bg-white rounded-2xl outline-none transition-all"
-                                placeholder="admin@vagmi.com"
+                                placeholder="Enter your email"
                             />
                         </div>
                     </div>
@@ -77,13 +78,20 @@ export default function AdminLoginPage() {
                         <div className="relative">
                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                             <input
-                                type="password"
+                                type={showPassword ? 'text' : 'password'}
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:border-[#1e1e2d] focus:bg-white rounded-2xl outline-none transition-all"
-                                placeholder="••••••••"
+                                className="w-full pl-12 pr-12 py-4 bg-gray-50 border-2 border-transparent focus:border-[#1e1e2d] focus:bg-white rounded-2xl outline-none transition-all"
+                                placeholder="Enter your password"
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#1e1e2d] transition-colors"
+                            >
+                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
                         </div>
                     </div>
 

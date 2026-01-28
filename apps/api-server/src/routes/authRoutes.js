@@ -4,6 +4,8 @@ const {
     // Email OTP Login
     sendEmailLoginOTP,
     verifyEmailLoginOTP,
+    resendOTP,
+    register,
     // Legacy/Core
     login,
     getMe,
@@ -23,6 +25,8 @@ router.post('/google-simulated', googleSimulated);
 // Email OTP Login/Signup
 router.post('/login/email', sendEmailLoginOTP);
 router.post('/login/verify', verifyEmailLoginOTP);
+router.post('/resend-otp', resendOTP);
+router.post('/register', register);
 
 // Reset password (initiate)
 // router.post('/forgot-password', forgotPassword); // To be implemented if needed

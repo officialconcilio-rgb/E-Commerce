@@ -42,63 +42,25 @@ export default function Home() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [productsRes, categoriesRes] = await Promise.all([
-                    api.get('/products?limit=4&sort=createdAt_desc'),
-                    api.get('/products/categories')
-                ]);
+                const productsRes = await api.get('/products?limit=4&sort=createdAt_desc');
                 setProducts(productsRes.data.products || []);
-
-                // Map API categories to UI format or fallback to hardcoded if empty
-                if (categoriesRes.data.categories && categoriesRes.data.categories.length > 0) {
-                    const mappedCategories = categoriesRes.data.categories.map((cat: any) => ({
-                        name: cat.name,
-                        image: cat.image || 'https://images.unsplash.com/photo-1544120300-30f14897f379?w=800&q=90&fit=crop',
-                        href: `/shop?category=${cat.slug}`,
-                        discount: cat.description || 'Exclusive Collection',
-                        slug: cat.slug
-                    }));
-                    // Ensure we have at least 5 for the grid layout by repeating or padding if needed
-                    // For now, let's just use what we have, but if less than 5, the grid might look empty.
-                    // Let's add the hardcoded ones as fallback for any missing slots up to 5 for the specific UI layout
-                    const defaultCats = [
-                        { name: 'Divine Idols', image: 'https://images.unsplash.com/photo-1544120300-30f14897f379?w=800&q=90&fit=crop', href: '/shop?category=divine-idols', discount: 'Spiritual Grace' },
-                        { name: 'Traditional Gifts', image: 'https://images.unsplash.com/photo-1630138221162-818274d8122d?w=800&q=90&fit=crop', href: '/shop?category=traditional', discount: 'Cultural Heritage' },
-                        { name: 'Festive Decor', image: 'https://images.unsplash.com/photo-1512411421370-1367468600d4?w=800&q=90&fit=crop', href: '/shop?category=festive', discount: 'Celebratory Charm' },
-                        { name: 'Home Decor', image: 'https://images.unsplash.com/photo-1616489953149-8e7cff624976?w=800&q=90&fit=crop', href: '/shop?category=home-decor', discount: 'Elegant Living' },
-                        { name: 'Corporate Gifts', image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=800&q=90&fit=crop', href: '/shop?category=corporate', discount: 'Professional Grace' },
-                    ];
-
-                    // Merge: use API categories first, then fill with default if needed to maintain UI structure
-                    const finalCats = [...mappedCategories];
-                    if (finalCats.length < 5) {
-                        finalCats.push(...defaultCats.slice(finalCats.length));
-                    }
-                    setCategories(finalCats);
-                } else {
-                    setCategories([
-                        { name: 'Divine Idols', image: 'https://images.unsplash.com/photo-1628103144888-c7aefe8556cc', href: '/shop?category=divine-idols', discount: 'Spiritual Grace' },
-                        { name: 'Traditional Gifts', image: 'https://images.unsplash.com/photo-1574354245973-2e22c954546b', href: '/shop?category=traditional', discount: 'Cultural Heritage' },
-                        { name: 'Festive Decor', image: 'https://images.unsplash.com/photo-1513205166258-204b611e92d6', href: '/shop?category=festive', discount: 'Celebratory Charm' },
-                        { name: 'Home Decor', image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7', href: '/shop?category=home-decor', discount: 'Elegant Living' },
-                        { name: 'Corporate Gifts', image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48', href: '/shop?category=corporate', discount: 'Professional Grace' },
-                    ]);
-                }
-
             } catch (error) {
-                console.log('Failed to fetch data');
-                setCategories([
-                    { name: 'Divine Idols', image: 'https://images.unsplash.com/photo-1628103144888-c7aefe8556cc', href: '/shop?category=divine-idols', discount: 'Spiritual Grace' },
-                    { name: 'Traditional Gifts', image: 'https://images.unsplash.com/photo-1574354245973-2e22c954546b', href: '/shop?category=traditional', discount: 'Cultural Heritage' },
-                    { name: 'Festive Decor', image: 'https://images.unsplash.com/photo-1513205166258-204b611e92d6', href: '/shop?category=festive', discount: 'Celebratory Charm' },
-                    { name: 'Home Decor', image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7', href: '/shop?category=home-decor', discount: 'Elegant Living' },
-                    { name: 'Corporate Gifts', image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48', href: '/shop?category=corporate', discount: 'Professional Grace' },
-                ]);
+                console.log('Failed to fetch products');
             } finally {
                 setLoading(false);
-                setCategoriesLoading(false);
             }
         };
         fetchData();
+
+        // Use hardcoded categories directly to "restore" stable images
+        setCategories([
+            { name: 'Divine Idols', image: 'https://images.unsplash.com/photo-1544120300-30f14897f379?w=800&q=90&fit=crop', href: '/shop?category=divine-idols', discount: 'Spiritual Grace', slug: 'divine-idols' },
+            { name: 'Traditional Gifts', image: 'https://images.unsplash.com/photo-1630138221162-818274d8122d?w=800&q=90&fit=crop', href: '/shop?category=traditional', discount: 'Cultural Heritage', slug: 'traditional' },
+            { name: 'Festive Decor', image: 'https://images.unsplash.com/photo-1512411421370-1367468600d4?w=800&q=90&fit=crop', href: '/shop?category=festive', discount: 'Celebratory Charm', slug: 'festive' },
+            { name: 'Home Decor', image: 'https://images.unsplash.com/photo-1616489953149-8e7cff624976?w=800&q=90&fit=crop', href: '/shop?category=home-decor', discount: 'Elegant Living', slug: 'home-decor' },
+            { name: 'Corporate Gifts', image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=800&q=90&fit=crop', href: '/shop?category=corporate', discount: 'Professional Grace', slug: 'corporate' },
+        ]);
+        setCategoriesLoading(false);
     }, []);
 
 
@@ -162,11 +124,12 @@ export default function Home() {
                                 {/* Main Image */}
                                 <div className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl">
                                     <Image
-                                        src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1920&q=90&fit=crop"
+                                        src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=1920&q=90&fit=crop"
                                         alt="Beautiful Gift Collection"
                                         fill
                                         className="object-cover"
                                         priority
+                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
                                 </div>
@@ -273,11 +236,12 @@ export default function Home() {
                         {/* Card 1 */}
                         <Link href="/shop?category=divine-idols" className="group relative h-[400px] rounded-[2.5rem] overflow-hidden">
                             <Image
-                                src="/static-assets/hero-1.jpg"
+                                src="https://images.unsplash.com/photo-1544120300-30f14897f379?w=800&q=90&fit=crop"
                                 alt="Divine Idols"
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-700"
                                 priority
+                                sizes="(max-width: 768px) 100vw, 50vw"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-10">
                                 <h3 className="text-3xl font-bold text-white mb-2">Divine Idols</h3>
@@ -288,11 +252,12 @@ export default function Home() {
                         {/* Card 2 */}
                         <Link href="/shop?category=traditional" className="group relative h-[400px] rounded-[2.5rem] overflow-hidden">
                             <Image
-                                src="/static-assets/hero-2.jpg"
+                                src="https://images.unsplash.com/photo-1630138221162-818274d8122d?w=800&q=90&fit=crop"
                                 alt="Traditional Crafts"
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-700"
                                 priority
+                                sizes="(max-width: 768px) 100vw, 50vw"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-10">
                                 <h3 className="text-3xl font-bold text-white mb-2">Traditional Crafts</h3>
@@ -303,10 +268,11 @@ export default function Home() {
                         {/* Card 3 */}
                         <Link href="/shop?category=festive" className="group relative h-[400px] rounded-[2.5rem] overflow-hidden">
                             <Image
-                                src="/static-assets/hero-3.jpg"
+                                src="https://images.unsplash.com/photo-1512411421370-1367468600d4?w=800&q=90&fit=crop"
                                 alt="Festive Essentials"
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-700"
+                                sizes="(max-width: 768px) 100vw, 50vw"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-10">
                                 <h3 className="text-3xl font-bold text-white mb-2">Festive Essentials</h3>
@@ -317,10 +283,11 @@ export default function Home() {
                         {/* Card 4 */}
                         <Link href="/shop?category=corporate" className="group relative h-[400px] rounded-[2.5rem] overflow-hidden">
                             <Image
-                                src="/static-assets/hero-4.jpg"
+                                src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=800&q=90&fit=crop"
                                 alt="Premium Gifting"
                                 fill
                                 className="object-cover group-hover:scale-105 transition-transform duration-700"
+                                sizes="(max-width: 768px) 100vw, 50vw"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-10">
                                 <h3 className="text-3xl font-bold text-white mb-2">Premium Gifting</h3>
