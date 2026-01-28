@@ -11,4 +11,4 @@ build/
 .DS_Store
 *.log
 coverage/
-.vscode/
+.vscode/.next/
