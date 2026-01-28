@@ -5,7 +5,7 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
-.next/
+**/.next/
 out/
 build/
 .DS_Store
