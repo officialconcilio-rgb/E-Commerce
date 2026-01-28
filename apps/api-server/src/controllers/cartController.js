@@ -7,8 +7,12 @@ const Variant = require('../models/Variant');
 // @access  Private
 exports.getCart = async (req, res) => {
     try {
+        if (!req.user || !req.user._id) {
+            return res.status(401).json({ success: false, message: 'Not authenticated' });
+        }
+
         let cart = await Cart.findOne({ userId: req.user._id })
-            .populate('items.productId', 'name slug basePrice images')
+            .populate('items.productId', 'name slug price discountPrice images')
             .populate('items.variantId', 'size color sku stockQuantity priceOverride');
 
         if (!cart) {
@@ -17,6 +21,7 @@ exports.getCart = async (req, res) => {
 
         res.json({ success: true, cart });
     } catch (error) {
+        console.error('[CART] Error fetching cart:', error.message);
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -26,6 +31,9 @@ exports.getCart = async (req, res) => {
 // @access  Private
 exports.addToCart = async (req, res) => {
     try {
+        if (!req.user || !req.user._id) {
+            return res.status(401).json({ success: false, message: 'Not authenticated' });
+        }
         const { productId, variantId, quantity } = req.body;
 
         let cart = await Cart.findOne({ userId: req.user._id });
@@ -56,6 +64,9 @@ exports.addToCart = async (req, res) => {
 // @access  Private
 exports.updateCartItem = async (req, res) => {
     try {
+        if (!req.user || !req.user._id) {
+            return res.status(401).json({ success: false, message: 'Not authenticated' });
+        }
         const { variantId, quantity } = req.body;
 
         const cart = await Cart.findOne({ userId: req.user._id });
@@ -85,6 +96,9 @@ exports.updateCartItem = async (req, res) => {
 // @access  Private
 exports.removeFromCart = async (req, res) => {
     try {
+        if (!req.user || !req.user._id) {
+            return res.status(401).json({ success: false, message: 'Not authenticated' });
+        }
         const { variantId } = req.params;
 
         const cart = await Cart.findOne({ userId: req.user._id });
@@ -100,7 +114,7 @@ exports.removeFromCart = async (req, res) => {
         }
 
         // Re-populate for consistent response
-        await cart.populate('items.productId', 'name slug basePrice images');
+        await cart.populate('items.productId', 'name slug price images');
         await cart.populate('items.variantId', 'size color sku stockQuantity priceOverride');
 
         res.json({ success: true, cart });

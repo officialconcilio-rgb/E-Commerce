@@ -22,18 +22,18 @@ export default function NewProductPage() {
         name: '',
         slug: '',
         description: '',
-        basePrice: '',
+        price: '',
         category: '',
         tags: '', // Comma separated
-        isActive: true
+        isActive: true,
+        hoverImage: '',
+        stock: ''
     });
 
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [previews, setPreviews] = useState<string[]>([]);
 
-    const [variants, setVariants] = useState([
-        { size: 'S', color: 'Black', stockQuantity: 0 }
-    ]);
+    const [variants, setVariants] = useState<any[]>([]); // Start with no variants by default
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -54,7 +54,7 @@ export default function NewProductPage() {
     };
 
     const addVariant = () => {
-        setVariants([...variants, { size: 'M', color: 'Black', stockQuantity: 0 }]);
+        setVariants([...variants, { size: '', color: '', stockQuantity: 0 }]);
     };
 
     const removeVariant = (index: number) => {
@@ -65,6 +65,14 @@ export default function NewProductPage() {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const files = Array.from(e.target.files);
+            const MAX_SIZE = 20 * 1024 * 1024; // 20MB
+
+            const oversizedFiles = files.filter(f => f.size > MAX_SIZE);
+            if (oversizedFiles.length > 0) {
+                alert(`Some files are too large. Maximum size is 20MB. \nOversized: ${oversizedFiles.map(f => f.name).join(', ')}`);
+                return;
+            }
+
             setSelectedFiles((prev) => [...prev, ...files]);
 
             const newPreviews = files.map((file) => URL.createObjectURL(file));
@@ -94,13 +102,25 @@ export default function NewProductPage() {
                 imageUrls = uploadRes.data.urls;
             }
 
-            // 2. Create Product
+            // 2. Prepare Product Payload
+            let finalVariants = [...variants];
+
+            // If no variants are defined, create a default "Standard" one to track stock
+            if (finalVariants.length === 0) {
+                finalVariants = [{
+                    size: 'Standard',
+                    color: 'Default',
+                    stockQuantity: Number(formData.stock) || 0
+                }];
+            }
+
             const productPayload = {
                 ...formData,
-                basePrice: Number(formData.basePrice),
+                price: Number(formData.price),
+                stock: Number(formData.stock),
                 images: imageUrls,
-                tags: formData.tags.split(',').map(tag => tag.trim()),
-                variants: variants
+                tags: formData.tags.split(',').map(tag => tag.trim()).filter(t => t),
+                variants: finalVariants
             };
 
             const res = await api.post('/admin/products', productPayload);
@@ -139,8 +159,10 @@ export default function NewProductPage() {
 
             // For now, I will finish this file, then update the backend controller.
 
-        } catch (error) {
-            alert('Failed to create product');
+        } catch (error: any) {
+            console.error('Create product error:', error);
+            const msg = error.response?.data?.message || error.message;
+            alert(`Failed to create product: ${msg}`);
             setLoading(false);
             return;
         }
@@ -204,12 +226,12 @@ export default function NewProductPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-gray-700">Base Price (₹)</label>
+                            <label className="text-sm font-bold text-gray-700">Price (₹)</label>
                             <input
                                 type="number"
                                 required
-                                value={formData.basePrice}
-                                onChange={(e) => setFormData({ ...formData, basePrice: e.target.value })}
+                                value={formData.price}
+                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                                 className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl outline-none focus:ring-2 ring-[#1e1e2d]/10"
                                 placeholder="1999"
                             />
@@ -227,6 +249,17 @@ export default function NewProductPage() {
                                     <option key={c._id} value={c._id}>{c.name}</option>
                                 ))}
                             </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-700">Basic Stock (if no variants)</label>
+                            <input
+                                type="number"
+                                value={formData.stock}
+                                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                                className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl outline-none focus:ring-2 ring-[#1e1e2d]/10"
+                                placeholder="0"
+                                disabled={variants.length > 0}
+                            />
                         </div>
                     </div>
                 </div>
@@ -269,16 +302,21 @@ export default function NewProductPage() {
                 {/* Variants */}
                 <div className="card p-8 space-y-6">
                     <div className="flex justify-between items-center border-b border-gray-100 pb-4">
-                        <h2 className="text-xl font-bold">Variants</h2>
+                        <h2 className="text-xl font-bold">Variants (Optional)</h2>
                         <button
                             type="button"
                             onClick={addVariant}
                             className="flex items-center space-x-2 text-sm font-bold text-[#1e1e2d] hover:bg-gray-50 px-3 py-2 rounded-lg transition-colors"
                         >
                             <Plus className="w-4 h-4" />
-                            <span>Add Variant</span>
+                            <span>Add Multi-Size/Color</span>
                         </button>
                     </div>
+                    {variants.length > 0 && (
+                        <p className="text-xs text-amber-600 font-bold bg-amber-50 p-3 rounded-xl">
+                            Note: Adding variants will override the "Basic Stock" entered above.
+                        </p>
+                    )}
 
                     <div className="space-y-4">
                         {variants.map((variant, index) => (
@@ -290,6 +328,7 @@ export default function NewProductPage() {
                                         value={variant.size}
                                         onChange={(e) => handleVariantChange(index, 'size', e.target.value)}
                                         className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 outline-none focus:border-[#1e1e2d]"
+                                        placeholder="e.g. XL"
                                     />
                                 </div>
                                 <div className="space-y-1">
@@ -299,6 +338,7 @@ export default function NewProductPage() {
                                         value={variant.color}
                                         onChange={(e) => handleVariantChange(index, 'color', e.target.value)}
                                         className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 outline-none focus:border-[#1e1e2d]"
+                                        placeholder="e.g. Red"
                                     />
                                 </div>
                                 <div className="space-y-1">

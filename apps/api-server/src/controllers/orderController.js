@@ -88,7 +88,7 @@ exports.createOrder = async (req, res) => {
         // Calculate total
         let totalAmount = 0;
         const orderItems = cart.items.map(item => {
-            const price = item.variantId.priceOverride || item.productId.basePrice;
+            const price = item.variantId.priceOverride || item.productId.price;
             totalAmount += price * item.quantity;
             return {
                 productId: item.productId._id,
@@ -118,36 +118,20 @@ exports.createOrder = async (req, res) => {
             paymentStatus: 'Pending'
         });
 
-        if (paymentMethod === 'COD') {
-            // Clear Cart for COD
-            await Cart.findOneAndUpdate({ userId: req.user._id }, { items: [] });
+        // Notify Admin
+        const { createAdminNotification } = require('../utils/notificationService');
+        await createAdminNotification({
+            title: 'New COD Order',
+            message: `Order ${order.orderNumber} placed for ₹${order.finalAmount}`,
+            type: 'Order',
+            link: `/orders/${order._id}`
+        });
 
-            // Update Stock for COD
-            // Update Stock for COD (Atomic)
-            for (const item of order.items) {
-                const updated = await Variant.findOneAndUpdate(
-                    { _id: item.variantId, stockQuantity: { $gte: item.quantity } },
-                    { $inc: { stockQuantity: -item.quantity } }
-                );
-
-                if (!updated) {
-                    // If stock update fails, cancel order immediately
-                    order.status = 'Cancelled';
-                    order.paymentStatus = 'Failed';
-                    await order.save();
-                    return res.status(400).json({
-                        success: false,
-                        message: `Stock unavailable for ${item.name}. Order cancelled.`
-                    });
-                }
-            }
-
-            return res.status(201).json({
-                success: true,
-                order,
-                message: 'Order placed successfully (COD)'
-            });
-        }
+        return res.status(201).json({
+            success: true,
+            order,
+            message: 'Order placed successfully (COD)'
+        });
 
         // Create Razorpay Order for Prepaid
         const options = {
@@ -224,23 +208,14 @@ exports.verifyPayment = async (req, res) => {
         // 4. Clear Cart
         await Cart.findOneAndUpdate({ userId: req.user._id }, { items: [] });
 
-        // 5. Update Stock
-        // 5. Update Stock (Atomic)
-        for (const item of order.items) {
-            const updated = await Variant.findOneAndUpdate(
-                { _id: item.variantId, stockQuantity: { $gte: item.quantity } },
-                { $inc: { stockQuantity: -item.quantity } }
-            );
-
-            if (!updated) {
-                // Critical: Payment taken but stock missing.
-                // In production, this should trigger an alert for manual refund.
-                console.error(`CRITICAL: Payment captured but stock missing for Order ${order.orderNumber}, Item ${item.variantId}`);
-                // We still keep order as Paid but maybe flag it?
-                // For now, we'll leave it as Confirmed but log it.
-                // Ideally, we should set a flag 'RequiresAttention'
-            }
-        }
+        // 6. Notify Admin
+        const { createAdminNotification } = require('../utils/notificationService');
+        await createAdminNotification({
+            title: 'New Prepaid Order',
+            message: `Order ${order.orderNumber} confirmed for ₹${order.finalAmount}`,
+            type: 'Order',
+            link: `/orders/${order._id}`
+        });
 
         res.json({ success: true, message: 'Payment verified successfully', orderId: order._id });
     } catch (error) {

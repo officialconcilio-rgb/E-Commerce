@@ -13,24 +13,36 @@ exports.createProduct = async (req, res) => {
     try {
         console.log('[ADMIN] Creating product:', req.body.name);
 
+        const { variants, ...productData } = req.body;
+
+        // Handle numbers and calculations
+        if (productData.price) productData.price = Number(productData.price);
+        if (productData.discount) productData.discount = Number(productData.discount);
+        if (productData.stock) productData.stock = Number(productData.stock);
+
+        if (productData.price && productData.discount) {
+            productData.discountPrice = productData.price - (productData.price * (productData.discount / 100));
+        }
+
         // Create the product first
-        const product = await Product.create(req.body);
+        const product = await Product.create(productData);
         console.log('[ADMIN] Product created with ID:', product._id);
 
         // Create variants if provided
-        if (req.body.variants && Array.isArray(req.body.variants) && req.body.variants.length > 0) {
-            const variants = req.body.variants.map((v, index) => ({
+        const variantsList = variants || req.body.variants;
+        if (variantsList && Array.isArray(variantsList) && variantsList.length > 0) {
+            const preparedVariants = variantsList.map((v, index) => ({
                 productId: product._id,
                 size: v.size,
                 color: v.color,
                 stockQuantity: v.stockQuantity || 0,
                 priceOverride: v.priceOverride,
                 // Auto-generate SKU if not provided
-                sku: v.sku || `${product.slug}-${v.size}-${v.color}-${index}`.toLowerCase().replace(/\s+/g, '-')
+                sku: v.sku || `${product.slug}${v.size ? `-${v.size}` : ''}${v.color ? `-${v.color}` : ''}-${index}`.toLowerCase().replace(/\s+/g, '-')
             }));
 
-            console.log('[ADMIN] Creating variants:', variants.length);
-            await Variant.insertMany(variants);
+            console.log('[ADMIN] Creating variants:', preparedVariants.length);
+            await Variant.insertMany(preparedVariants);
             console.log('[ADMIN] Variants created successfully');
         }
 
@@ -41,17 +53,75 @@ exports.createProduct = async (req, res) => {
     }
 };
 
+// @desc    Get Single Product (with variants)
+// @route   GET /api/admin/products/:id
+// @access  Private/Admin
+exports.getProductById = async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.id).populate('category', 'name slug');
+        if (!product) {
+            return res.status(404).json({ success: false, message: 'Product not found' });
+        }
+
+        const variants = await Variant.find({ productId: product._id });
+
+        res.json({
+            success: true,
+            product,
+            variants
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // @desc    Update Product
 // @route   PUT /api/admin/products/:id
 // @access  Private/Admin
 exports.updateProduct = async (req, res) => {
     try {
-        const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+        const { variants, ...updateData } = req.body;
+
+        // Ensure numbers are numbers
+        if (updateData.price) updateData.price = Number(updateData.price);
+        if (updateData.discount) updateData.discount = Number(updateData.discount);
+        if (updateData.stock) updateData.stock = Number(updateData.stock);
+
+        if (updateData.price && updateData.discount) {
+            updateData.discountPrice = updateData.price - (updateData.price * (updateData.discount / 100));
+        }
+
+        const product = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
         if (!product) {
             return res.status(404).json({ success: false, message: 'Product not found' });
         }
+
+        // Handle variants if provided
+        if (variants && Array.isArray(variants)) {
+            // Delete old variants and insert new ones for simplicity
+            // In a production app, we would ideally sync changes
+            await Variant.deleteMany({ productId: product._id });
+
+            if (variants.length > 0) {
+                const variantsToInsert = variants.map((v, index) => ({
+                    productId: product._id,
+                    size: v.size,
+                    color: v.color,
+                    stockQuantity: v.stockQuantity || 0,
+                    priceOverride: v.priceOverride,
+                    sku: v.sku || `${product.slug}${v.size ? `-${v.size}` : ''}${v.color ? `-${v.color}` : ''}-${index}`.toLowerCase().replace(/\s+/g, '-')
+                }));
+                await Variant.insertMany(variantsToInsert);
+            }
+        }
+
         res.json({ success: true, product });
     } catch (error) {
+        console.error('[ADMIN] Update Product Detailed Error:', {
+            message: error.message,
+            stack: error.stack,
+            body: req.body
+        });
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -65,7 +135,15 @@ exports.deleteProduct = async (req, res) => {
         if (!product) {
             return res.status(404).json({ success: false, message: 'Product not found' });
         }
-        res.json({ success: true, message: 'Product removed' });
+
+        // Remove from all carts
+        const Cart = require('../models/Cart');
+        await Cart.updateMany(
+            { 'items.productId': req.params.id },
+            { $pull: { items: { productId: req.params.id } } }
+        );
+
+        res.json({ success: true, message: 'Product removed from store and all user carts' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -76,6 +154,14 @@ exports.deleteProduct = async (req, res) => {
 // @access  Private/Admin
 exports.createCategory = async (req, res) => {
     try {
+        if (!req.body.slug && req.body.name) {
+            req.body.slug = req.body.name.toLowerCase().trim().replace(/\s+/g, '-');
+        }
+
+        if (req.body.slug) {
+            req.body.slug = req.body.slug.toLowerCase().trim();
+        }
+
         const category = await Category.create(req.body);
         res.status(201).json({ success: true, category });
     } catch (error) {
@@ -88,6 +174,10 @@ exports.createCategory = async (req, res) => {
 // @access  Private/Admin
 exports.updateCategory = async (req, res) => {
     try {
+        if (req.body.slug) {
+            req.body.slug = req.body.slug.toLowerCase().trim();
+        }
+
         const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
         if (!category) {
             return res.status(404).json({ success: false, message: 'Category not found' });

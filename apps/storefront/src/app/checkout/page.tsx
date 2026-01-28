@@ -7,8 +7,9 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import api from '@/utils/api';
 import Navbar from '@/components/Navbar';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
-import { CreditCard, Truck, ShieldCheck, X } from 'lucide-react';
+import { CreditCard, Truck, ShieldCheck, X, ChevronRight, MapPin, Lock, Info } from 'lucide-react';
 
 declare global {
     interface Window {
@@ -58,10 +59,10 @@ export default function CheckoutPage() {
     }, []);
 
     const subtotal = items.reduce((acc, item: any) => {
-        const price = item.variantId.priceOverride || item.productId.basePrice;
+        const price = item.variantId?.priceOverride || item.productId?.price || 0;
         return acc + (price * item.quantity);
     }, 0);
-    const shippingCost = subtotal > settings.freeShippingThreshold ? 0 : settings.shippingCost;
+    const shippingCost = subtotal > (settings?.freeShippingThreshold || 999) ? 0 : (settings?.shippingCost || 99);
     const total = subtotal + shippingCost;
 
     const loadRazorpay = () => {
@@ -87,16 +88,11 @@ export default function CheckoutPage() {
             const res = await api.post('/auth/address', addressForm);
 
             if (res.data.success) {
-                // Refresh user data to get updated addresses
                 await checkAuth();
-
-                // Select the newly added address (last one in the array)
                 const addresses = res.data.addresses;
                 if (addresses && addresses.length > 0) {
                     setSelectedAddress(addresses[addresses.length - 1]._id);
                 }
-
-                // Close modal and reset form
                 setShowAddressModal(false);
                 setAddressForm({
                     type: 'Home',
@@ -122,32 +118,28 @@ export default function CheckoutPage() {
 
         setLoading(true);
         try {
-            // 1. Create Order in Backend
             const orderRes = await api.post('/orders', {
                 addressId: selectedAddress,
                 paymentMethod: 'Prepaid'
             });
 
             const { order, razorpayOrder } = orderRes.data;
-
-            // 2. Load Razorpay Script
             const isLoaded = await loadRazorpay();
+
             if (!isLoaded) {
                 alert('Razorpay SDK failed to load. Are you online?');
                 return;
             }
 
-            // 3. Open Razorpay Checkout
             const options = {
                 key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
                 amount: razorpayOrder.amount,
                 currency: razorpayOrder.currency,
-                name: 'BRAND.',
+                name: 'VAGMI',
                 description: `Order #${order.orderNumber}`,
                 order_id: razorpayOrder.id,
                 handler: async (response: any) => {
                     try {
-                        // 4. Verify Payment in Backend
                         await api.post('/orders/verify', {
                             razorpay_order_id: response.razorpay_order_id,
                             razorpay_payment_id: response.razorpay_payment_id,
@@ -162,7 +154,6 @@ export default function CheckoutPage() {
                 },
                 modal: {
                     ondismiss: async function () {
-                        // Handle payment cancellation
                         try {
                             await api.post('/orders/failed', {
                                 razorpay_order_id: razorpayOrder.id,
@@ -179,13 +170,11 @@ export default function CheckoutPage() {
                     contact: user.phone || ''
                 },
                 theme: {
-                    color: '#000000'
+                    color: '#d97706'
                 }
             };
 
             const paymentObject = new window.Razorpay(options);
-
-            // Handle payment failure
             paymentObject.on('payment.failed', async function (response: any) {
                 try {
                     await api.post('/orders/failed', {
@@ -206,150 +195,252 @@ export default function CheckoutPage() {
         }
     };
 
+    if (items.length === 0 && !loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 text-center flex flex-col items-center justify-center p-4">
+                <Navbar />
+                <div className="bg-white rounded-[40px] p-12 shadow-sm max-w-lg w-full">
+                    <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <ShieldCheck className="w-10 h-10 text-amber-600" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-800 mb-4">Your bag is empty</h1>
+                    <p className="text-gray-500 mb-10">Add some gifts to your bag before checking out.</p>
+                    <Link href="/shop" className="btn-primary w-full py-4 px-10 rounded-full">Explore Gifts</Link>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <>
+        <div className="min-h-screen bg-gray-50">
             <Navbar />
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <h1 className="text-4xl font-black tracking-tight mb-12">CHECKOUT.</h1>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-                    {/* Left: Shipping & Payment */}
-                    <div className="space-y-12">
-                        <section>
-                            <div className="flex items-center space-x-3 mb-6">
-                                <Truck className="w-6 h-6" />
-                                <h2 className="text-2xl font-bold">Shipping Address</h2>
+            {/* Breadcrumb */}
+            <div className="bg-white border-b border-gray-200">
+                <div className="container-main py-3">
+                    <nav className="text-sm text-gray-500 flex items-center">
+                        <Link href="/" className="hover:text-amber-600 transition-colors">Home</Link>
+                        <ChevronRight className="w-4 h-4 mx-2" />
+                        <Link href="/cart" className="hover:text-amber-600 transition-colors">Bag</Link>
+                        <ChevronRight className="w-4 h-4 mx-2" />
+                        <span className="text-gray-800">Checkout</span>
+                    </nav>
+                </div>
+            </div>
+
+            <div className="container-main py-8">
+                <div className="flex flex-col lg:flex-row gap-8 xl:gap-16">
+                    {/* Left: Main Column */}
+                    <div className="lg:w-3/5 space-y-8">
+                        {/* Header */}
+                        <div>
+                            <h1 className="text-2xl lg:text-3xl font-bold text-gray-800 mb-2">Checkout</h1>
+                            <p className="text-gray-500">Please provide your delivery and payment details</p>
+                        </div>
+
+                        {/* Step 1: Shipping Address */}
+                        <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
+                            <div className="p-6 lg:p-8 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
+                                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600 text-sm">1</div>
+                                    Shipping Address
+                                </h2>
+                                <button
+                                    onClick={() => setShowAddressModal(true)}
+                                    className="text-amber-600 font-bold text-sm hover:underline"
+                                >
+                                    + Add New
+                                </button>
                             </div>
-
-                            <div className="space-y-4">
-                                {user?.addresses?.map((addr: any) => (
-                                    <label
-                                        key={addr._id}
-                                        className={`block p-6 border-2 rounded-2xl cursor-pointer transition-all ${selectedAddress === addr._id ? 'border-black bg-gray-50' : 'border-gray-100 hover:border-gray-200'
-                                            }`}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center space-x-4">
+                            <div className="p-6 lg:p-8 space-y-4">
+                                {user?.addresses?.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {user.addresses.map((addr: any) => (
+                                            <label
+                                                key={addr._id}
+                                                className={`relative p-5 border-2 rounded-2xl cursor-pointer transition-all ${selectedAddress === addr._id
+                                                    ? 'border-amber-500 bg-amber-50/50 shadow-sm'
+                                                    : 'border-gray-100 hover:border-amber-200 hover:bg-gray-50'
+                                                    }`}
+                                            >
                                                 <input
                                                     type="radio"
                                                     name="address"
                                                     checked={selectedAddress === addr._id}
                                                     onChange={() => setSelectedAddress(addr._id)}
-                                                    className="w-5 h-5 accent-black"
+                                                    className="sr-only"
                                                 />
-                                                <div>
-                                                    <p className="font-bold">{addr.type}</p>
-                                                    <p className="text-sm text-gray-500">{addr.street}, {addr.city}, {addr.state} - {addr.zipCode}</p>
+                                                <div className="flex items-start justify-between mb-3">
+                                                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${selectedAddress === addr._id ? 'bg-amber-600 text-white' : 'bg-gray-200 text-gray-500'
+                                                        }`}>
+                                                        {addr.type}
+                                                    </span>
+                                                    {selectedAddress === addr._id && (
+                                                        <ShieldCheck className="w-5 h-5 text-amber-600" />
+                                                    )}
                                                 </div>
-                                            </div>
-                                        </div>
-                                    </label>
-                                ))}
-                                <button
-                                    onClick={() => setShowAddressModal(true)}
-                                    className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-500 font-bold hover:bg-gray-50 hover:border-gray-300 transition-all"
-                                >
-                                    + Add New Address
-                                </button>
-                            </div>
-                        </section>
-
-                        <section>
-                            <div className="flex items-center space-x-3 mb-6">
-                                <CreditCard className="w-6 h-6" />
-                                <h2 className="text-2xl font-bold">Payment Method</h2>
-                            </div>
-                            <div className="p-6 border-2 border-black bg-gray-50 rounded-2xl flex items-center justify-between">
-                                <div className="flex items-center space-x-4">
-                                    <div className="bg-black text-white p-2 rounded-lg">
-                                        <ShieldCheck className="w-6 h-6" />
+                                                <p className="font-bold text-gray-800 text-sm mb-1">{user.firstName} {user.lastName}</p>
+                                                <p className="text-sm text-gray-600 leading-relaxed mb-3">
+                                                    {addr.street}, {addr.city}<br />
+                                                    {addr.state} - {addr.zipCode}
+                                                </p>
+                                                <p className="text-[11px] text-gray-400 font-medium">+91 {user.phone || '98765 43210'}</p>
+                                            </label>
+                                        ))}
                                     </div>
-                                    <div>
-                                        <p className="font-bold">Razorpay Secure</p>
-                                        <p className="text-sm text-gray-500">UPI, Cards, Netbanking, Wallets</p>
+                                ) : (
+                                    <div className="text-center py-10 border-2 border-dashed border-gray-100 rounded-2xl">
+                                        <MapPin className="w-10 h-10 text-gray-300 mx-auto mb-4" />
+                                        <p className="text-gray-500 mb-6">No saved addresses found</p>
+                                        <button
+                                            onClick={() => setShowAddressModal(true)}
+                                            className="btn-primary py-3 px-8 rounded-full"
+                                        >
+                                            Add Shipping Address
+                                        </button>
                                     </div>
-                                </div>
-                                <div className="w-6 h-6 bg-black rounded-full flex items-center justify-center">
-                                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                                </div>
+                                )}
                             </div>
-                        </section>
-                    </div>
+                        </div>
 
-                    {/* Right: Order Summary */}
-                    <div className="bg-gray-50 rounded-3xl p-10 h-fit">
-                        <h2 className="text-2xl font-bold mb-8">Order Summary</h2>
-                        <div className="space-y-6 mb-8">
-                            {items.map((item: any) => (
-                                <div key={item.variantId._id} className="flex justify-between items-center">
-                                    <div className="flex items-center space-x-4">
-                                        <div className="relative w-16 h-20 rounded-lg overflow-hidden bg-white">
-                                            <Image src={item.productId.images[0]} alt={item.productId.name} fill sizes="64px" className="object-cover" />
+                        {/* Step 2: Payment Method */}
+                        <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-gray-100">
+                            <div className="p-6 lg:p-8 bg-gray-50/50 border-b border-gray-100">
+                                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600 text-sm">2</div>
+                                    Payment Method
+                                </h2>
+                            </div>
+                            <div className="p-6 lg:p-8">
+                                <div className="p-6 border-2 border-amber-500 bg-amber-50/50 rounded-2xl flex items-center justify-between group">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center">
+                                            <CreditCard className="w-6 h-6 text-amber-600" />
                                         </div>
                                         <div>
-                                            <p className="font-bold text-sm">{item.productId.name}</p>
-                                            <p className="text-xs text-gray-500">Qty: {item.quantity} | Size: {item.variantId.size}</p>
+                                            <p className="font-bold text-gray-800">Razorpay Secure Checkout</p>
+                                            <p className="text-xs text-gray-500 font-medium">UPI, Cards, Wallets, and Netbanking</p>
                                         </div>
                                     </div>
-                                    <span className="font-bold">₹{(item.variantId.priceOverride || item.productId.basePrice) * item.quantity}</span>
+                                    <div className="w-6 h-6 border-2 border-amber-600 rounded-full flex items-center justify-center">
+                                        <div className="w-3 h-3 bg-amber-600 rounded-full"></div>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-
-                        <div className="space-y-4 pt-6 border-t border-gray-200">
-                            <div className="flex justify-between text-gray-600">
-                                <span>Subtotal</span>
-                                <span>₹{subtotal}</span>
-                            </div>
-                            <div className="flex justify-between text-gray-600">
-                                <span>Shipping</span>
-                                <span>{shippingCost === 0 ? 'FREE' : `₹${shippingCost}`}</span>
-                            </div>
-                            <div className="flex justify-between text-2xl font-black pt-4">
-                                <span>Total</span>
-                                <span>₹{total}</span>
+                                <div className="mt-6 flex items-center gap-3 text-xs text-gray-400 bg-gray-50 p-4 rounded-xl">
+                                    <Lock className="w-4 h-4 text-green-500" />
+                                    <span>Bank-grade 256-bit SSL encryption. Your payment details are never stored.</span>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <button
-                            onClick={handlePayment}
-                            disabled={loading || items.length === 0}
-                            className="w-full btn-primary py-5 mt-10 text-lg font-bold disabled:opacity-50"
-                        >
-                            {loading ? 'Processing...' : `Pay ₹${total}`}
-                        </button>
+                    {/* Right: Sidebar */}
+                    <div className="lg:w-2/5">
+                        <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden sticky top-28">
+                            <div className="p-8">
+                                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center justify-between">
+                                    Order Summary
+                                    <span className="text-sm font-normal text-gray-400">{items.length} {items.length === 1 ? 'item' : 'items'}</span>
+                                </h3>
+
+                                {/* Items List */}
+                                <div className="space-y-4 mb-8 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {items.map((item: any) => (
+                                        <div key={item.variantId?._id} className="flex gap-4 p-2 rounded-2xl hover:bg-gray-50 transition-colors">
+                                            <div className="relative w-16 h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                                                <Image
+                                                    src={item.productId?.images?.[0]}
+                                                    alt={item.productId?.name}
+                                                    fill
+                                                    sizes="64px"
+                                                    className="object-cover"
+                                                />
+                                            </div>
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                <p className="font-bold text-gray-800 text-sm truncate">{item.productId?.name}</p>
+                                                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider mb-1">
+                                                    Qty: {item.quantity} • Size: {item.variantId?.size || 'N/A'}
+                                                </p>
+                                                <p className="font-bold text-amber-600 text-sm italic">
+                                                    ₹{(item.variantId?.priceOverride || item.productId?.price || 0) * item.quantity}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="space-y-3 pt-6 border-t border-gray-100 mb-8">
+                                    <div className="flex justify-between text-sm text-gray-500 font-medium">
+                                        <span>Items Total</span>
+                                        <span className="text-gray-800">₹{subtotal}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm text-gray-500 font-medium">
+                                        <span className="flex items-center gap-1.5">
+                                            Delivery
+                                            <Info className="w-3.5 h-3.5 text-gray-300" />
+                                        </span>
+                                        <span className={shippingCost === 0 ? 'text-green-600 font-bold' : 'text-gray-800'}>
+                                            {shippingCost === 0 ? 'FREE' : `₹${shippingCost}`}
+                                        </span>
+                                    </div>
+                                    <div className="pt-4 flex justify-between items-end">
+                                        <div>
+                                            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-1">Total Amount</p>
+                                            <p className="font-black text-3xl text-gray-900 tracking-tight">₹{total}</p>
+                                        </div>
+                                        <p className="text-[10px] text-green-600 font-bold mb-1">SAVING ₹99 SHIPPING</p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handlePayment}
+                                    disabled={loading || !selectedAddress}
+                                    className="w-full btn-primary py-5 rounded-full text-lg font-bold shadow-xl shadow-amber-200 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-3 transition-transform active:scale-[0.98]"
+                                >
+                                    {loading ? 'Processing...' : (
+                                        <>
+                                            Place Order
+                                            <ChevronRight className="w-6 h-6" />
+                                        </>
+                                    )}
+                                </button>
+
+                                <p className="text-[10px] text-center text-gray-400 mt-6 font-medium">
+                                    By placing the order, you agree to Vagmi's <Link href="/terms" className="underline">Terms & Conditions</Link>
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Add Address Modal */}
             {showAddressModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden animate-fade-in">
                         <div className="p-8">
                             <div className="flex items-center justify-between mb-8">
-                                <h2 className="text-2xl font-black">Add New Address</h2>
+                                <h2 className="text-2xl font-bold text-gray-800">New Address</h2>
                                 <button
                                     onClick={() => setShowAddressModal(false)}
-                                    className="p-2 hover:bg-gray-100 rounded-full transition-all"
+                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                                 >
-                                    <X className="w-6 h-6" />
+                                    <X className="w-6 h-6 text-gray-400" />
                                 </button>
                             </div>
 
                             <form onSubmit={handleAddAddress} className="space-y-6">
-                                {/* Address Type */}
                                 <div>
-                                    <label className="block text-sm font-bold uppercase tracking-wider mb-2">Address Type</label>
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Location Type</label>
                                     <div className="flex gap-3">
                                         {(['Home', 'Work', 'Other'] as const).map((type) => (
                                             <button
                                                 key={type}
                                                 type="button"
                                                 onClick={() => setAddressForm({ ...addressForm, type })}
-                                                className={`px-6 py-3 rounded-xl font-bold transition-all ${addressForm.type === type
-                                                    ? 'bg-black text-white'
-                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all border-2 ${addressForm.type === type
+                                                    ? 'border-amber-600 bg-amber-600 text-white shadow-lg shadow-amber-100'
+                                                    : 'border-gray-100 text-gray-500 hover:border-amber-200'
                                                     }`}
                                             >
                                                 {type}
@@ -358,91 +449,76 @@ export default function CheckoutPage() {
                                     </div>
                                 </div>
 
-                                {/* Street Address */}
-                                <div>
-                                    <label className="block text-sm font-bold uppercase tracking-wider mb-2">
-                                        Street Address <span className="text-red-500">*</span>
-                                    </label>
+                                <div className="space-y-2">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Full Address</label>
                                     <input
                                         type="text"
+                                        required
                                         value={addressForm.street}
                                         onChange={(e) => setAddressForm({ ...addressForm, street: e.target.value })}
-                                        placeholder="Enter your street address"
-                                        className="w-full p-4 border-2 border-gray-100 rounded-xl focus:border-black focus:outline-none transition-all"
-                                        required
+                                        placeholder="Flat/House No., Street name"
+                                        className="w-full p-4 bg-gray-50 border-2 border-transparent focus:border-amber-500 focus:bg-white rounded-xl outline-none transition-all text-sm font-medium"
                                     />
                                 </div>
 
-                                {/* City & State */}
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold uppercase tracking-wider mb-2">
-                                            City <span className="text-red-500">*</span>
-                                        </label>
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">City</label>
                                         <input
                                             type="text"
+                                            required
                                             value={addressForm.city}
                                             onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
-                                            placeholder="City"
-                                            className="w-full p-4 border-2 border-gray-100 rounded-xl focus:border-black focus:outline-none transition-all"
-                                            required
+                                            className="w-full p-4 bg-gray-50 border-2 border-transparent focus:border-amber-500 focus:bg-white rounded-xl outline-none transition-all text-sm font-medium"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-bold uppercase tracking-wider mb-2">
-                                            State <span className="text-red-500">*</span>
-                                        </label>
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">State</label>
                                         <input
                                             type="text"
+                                            required
                                             value={addressForm.state}
                                             onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
-                                            placeholder="State"
-                                            className="w-full p-4 border-2 border-gray-100 rounded-xl focus:border-black focus:outline-none transition-all"
-                                            required
+                                            className="w-full p-4 bg-gray-50 border-2 border-transparent focus:border-amber-500 focus:bg-white rounded-xl outline-none transition-all text-sm font-medium"
                                         />
                                     </div>
                                 </div>
 
-                                {/* Zip Code & Country */}
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold uppercase tracking-wider mb-2">
-                                            ZIP Code <span className="text-red-500">*</span>
-                                        </label>
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Pincode</label>
                                         <input
                                             type="text"
-                                            value={addressForm.zipCode}
-                                            onChange={(e) => setAddressForm({ ...addressForm, zipCode: e.target.value })}
-                                            placeholder="ZIP Code"
-                                            className="w-full p-4 border-2 border-gray-100 rounded-xl focus:border-black focus:outline-none transition-all"
                                             required
+                                            maxLength={6}
+                                            value={addressForm.zipCode}
+                                            onChange={(e) => setAddressForm({ ...addressForm, zipCode: e.target.value.replace(/\D/g, '') })}
+                                            className="w-full p-4 bg-gray-50 border-2 border-transparent focus:border-amber-500 focus:bg-white rounded-xl outline-none transition-all text-sm font-medium"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-bold uppercase tracking-wider mb-2">Country</label>
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Country</label>
                                         <input
                                             type="text"
+                                            disabled
                                             value={addressForm.country}
-                                            onChange={(e) => setAddressForm({ ...addressForm, country: e.target.value })}
-                                            placeholder="Country"
-                                            className="w-full p-4 border-2 border-gray-100 rounded-xl focus:border-black focus:outline-none transition-all"
+                                            className="w-full p-4 bg-gray-100 border-2 border-transparent rounded-xl text-gray-400 text-sm font-medium cursor-not-allowed"
                                         />
                                     </div>
                                 </div>
 
-                                {/* Submit Button */}
                                 <button
                                     type="submit"
                                     disabled={addressLoading}
-                                    className="w-full bg-black text-white py-4 rounded-xl font-bold hover:bg-gray-800 transition-all disabled:opacity-50"
+                                    className="w-full btn-primary py-4 rounded-full font-bold shadow-lg shadow-amber-200 mt-4 h-14"
                                 >
-                                    {addressLoading ? 'Adding Address...' : 'Add Address'}
+                                    {addressLoading ? 'Saving...' : 'Save & Use Address'}
                                 </button>
                             </form>
                         </div>
                     </div>
                 </div>
             )}
-        </>
+        </div>
     );
 }
